@@ -1,0 +1,131 @@
+.all-listings-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.all-listings-container h1 {
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.error-message {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-message button {
+  background: transparent;
+  border: 1px solid #721c24;
+  color: #721c24;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.listings-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-box {
+  background: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.stat-box h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #666;
+  font-size: 1rem;
+}
+
+.stat-box p {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.listings-table-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.listings-table-wrapper {
+  overflow-x: auto;
+}
+
+.listings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.listings-table th {
+  background: #f5f5f5;
+  text-align: left;
+  padding: 1rem;
+  font-weight: 600;
+  color: #333;
+  position: sticky;
+  top: 0;
+}
+
+.listings-table td {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid #eee;
+}
+
+.listings-table tr:hover {
+  background: #f9f9f9;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-active {
+  background: #e6f7ed;
+  color: #155724;
+}
+
+.status-inactive {
+  background: #f8f9fa;
+  color: #6c757d;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.no-listings {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+} 

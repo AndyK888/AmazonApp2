@@ -1,0 +1,118 @@
+.navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background-color: #232f3e;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.navbar-logo a {
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-toggle {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.burger-icon {
+  display: block;
+  position: relative;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s;
+}
+
+.burger-icon::before,
+.burger-icon::after {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s;
+}
+
+.burger-icon::before {
+  transform: translateY(-8px);
+}
+
+.burger-icon::after {
+  transform: translateY(8px);
+}
+
+.burger-icon.open {
+  background-color: transparent;
+}
+
+.burger-icon.open::before {
+  transform: rotate(45deg);
+}
+
+.burger-icon.open::after {
+  transform: rotate(-45deg);
+}
+
+.nav-list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  margin-left: 2rem;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  padding: 0.5rem;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  color: #ff9900;
+}
+
+@media (max-width: 768px) {
+  .navbar-toggle {
+    display: block;
+  }
+  
+  .nav-list {
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background-color: #232f3e;
+    padding: 1rem 0;
+    transition: transform 0.3s ease-in-out;
+    transform: translateY(-150%);
+    z-index: 10;
+  }
+  
+  .nav-list-open {
+    transform: translateY(0);
+  }
+  
+  .nav-item {
+    margin: 0;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+} 
