@@ -1,7 +1,7 @@
 ---
-description: Project Development Rules
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Design Principles
 - **Maximal Diversification of Microservices**: Break the application into small, independent microservices, each responsible for a single, well-defined functionality. This aligns with the microservices philosophy of "do one thing and do it well," enhancing maintainability and scalability.

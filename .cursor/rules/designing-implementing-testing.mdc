@@ -1,7 +1,7 @@
 ---
-description: Workflow for Designing, Implementing, and Testing
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # 1. Design Phase
 The design phase focuses on planning the application’s structure and interactions.

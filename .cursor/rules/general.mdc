@@ -1,7 +1,7 @@
 ---
-description: MUST follow with highest priority
+description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Development and Debugging Guidelines
 

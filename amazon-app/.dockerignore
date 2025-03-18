@@ -1,0 +1,44 @@
+# Dependency directories
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build output
+/build
+/dist
+
+# Development and environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.git
+.github
+.gitignore
+.vscode
+.idea
+
+# Test files
+coverage/
+__tests__/
+
+# Large data files
+All_Listings_Report.txt
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Docker related
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.sqlite
+*.db 
