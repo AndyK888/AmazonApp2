@@ -20,13 +20,32 @@
 .file-uploader__input {
   display: flex;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .file-uploader__filename {
   margin-left: 1rem;
   margin-bottom: 0;
   font-size: 0.9rem;
+}
+
+.file-uploader__hint {
+  font-size: 0.85rem;
+  color: #0070f3;
+  margin: 0 0 1.25rem 0;
+  padding: 8px 12px;
+  background-color: #f0f7ff;
+  border-left: 3px solid #0070f3;
+  border-radius: 0 4px 4px 0;
+  display: flex;
+  align-items: center;
+  width: fit-content;
+}
+
+.file-uploader__hint::before {
+  content: 'ℹ️';
+  margin-right: 8px;
+  font-size: 1rem;
 }
 
 .file-uploader__button {

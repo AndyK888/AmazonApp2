@@ -13,6 +13,7 @@ A modern web application for managing Amazon inventory with file upload capabili
   - Real-time data processing and validation
   - Progress tracking for file uploads
   - Detailed error reporting and handling
+  - Enhanced file format guidance with improved visual UI
 - **Product List**
   - Interactive table with the following columns:
     - SKU (Stock Keeping Unit)
@@ -133,13 +134,17 @@ Features:
 A reusable component for handling file uploads.
 
 Props:
-- `onFilesUploaded`: Callback function that receives the uploaded files
+- `onUploadComplete`: Callback function that receives the upload response
+- `onUploadError`: Callback function that handles upload errors
 
 Features:
-- Drag and drop file upload
-- File type restrictions
-- Visual feedback during upload process
+- File selection with input field
+- Clear visual separation between filename and format guidance
+- Enhanced format hint with information icon and highlighted styling
+- Multi-stage upload process with visual indicators
+- Progress tracking with status messages
 - Error handling for upload failures
+- Responsive design with appropriate spacing and visual hierarchy
 
 ### InventoryTable
 

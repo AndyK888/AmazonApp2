@@ -19,6 +19,9 @@ COPY . .
 # Install missing TypeScript types
 RUN npm install --save-dev @types/papaparse
 
+# Make sure we have the latest changes for tab-delimited file parsing
+RUN echo "Building with support for All_Listings_Report.txt format"
+
 # Build the application
 RUN npm run build
 
@@ -36,6 +39,12 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
+
+# Don't copy the All_Listings_Report.txt file in the Docker build
+# Users will upload it through the app interface
+
+# Copy database initialization scripts
+COPY --from=builder /app/db/init /app/db/init
 
 # Expose port 3000
 EXPOSE 3000

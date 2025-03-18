@@ -145,6 +145,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         </p>
       </div>
       
+      <p className={styles['file-uploader__hint']}>
+        Supported format: Tab-delimited All_Listings_Report.txt from Amazon Seller Central
+      </p>
+      
       <button 
         className={styles['file-uploader__button']} 
         onClick={handleUpload} 

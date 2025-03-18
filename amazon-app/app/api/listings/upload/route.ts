@@ -31,60 +31,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const results = parse(fileText, {
       header: true,
       skipEmptyLines: true,
+      delimiter: '\t',
       transformHeader: (header) => {
-        // Transform headers to match our database columns
-        const headerMap: { [key: string]: string } = {
-          'item-name': 'item_name',
-          'item-description': 'item_description',
-          'listing-id': 'listing_id',
-          'seller-sku': 'seller_sku',
-          'price': 'price',
-          'quantity': 'quantity',
-          'open-date': 'open_date',
-          'image-url': 'image_url',
-          'item-is-marketplace': 'item_is_marketplace',
-          'product-id-type': 'product_id_type',
-          'zshop-shipping-fee': 'zshop_shipping_fee',
-          'item-note': 'item_note',
-          'item-condition': 'item_condition',
-          'zshop-category1': 'zshop_category1',
-          'zshop-browse-path': 'zshop_browse_path',
-          'zshop-storefront-feature': 'zshop_storefront_feature',
-          'asin1': 'asin1',
-          'asin2': 'asin2',
-          'asin3': 'asin3',
-          'will-ship-internationally': 'will_ship_internationally',
-          'expedited-shipping': 'expedited_shipping',
-          'zshop-boldface': 'zshop_boldface',
-          'product-id': 'product_id',
-          'bid-for-featured-placement': 'bid_for_featured_placement',
-          'add-delete': 'add_delete',
-          'pending-quantity': 'pending_quantity',
-          'fulfillment-channel': 'fulfillment_channel',
-          'merchant-shipping-group': 'merchant_shipping_group',
-          'status': 'status'
-        };
-        return headerMap[header] || header.replace(/-/g, '_');
+        // Keep headers as they are with hyphens, to match our database columns
+        return header.trim();
       },
       transform: (value, field) => {
+        // Trim whitespace and handle empty strings
+        if (value === undefined || value === '') {
+          return null;
+        }
+        
+        const trimmedValue = typeof value === 'string' ? value.trim() : value;
+        
         // Convert string values to appropriate types
         if (field === 'price') {
-          return value ? parseFloat(value) : null;
+          return trimmedValue ? parseFloat(trimmedValue) : null;
         }
-        if (field === 'quantity' || field === 'pending_quantity') {
-          return value ? parseInt(value, 10) : 0;
+        if (field === 'quantity' || field === 'pending-quantity') {
+          return trimmedValue ? parseInt(trimmedValue, 10) : 0;
         }
-        if (field === 'item_is_marketplace' || field === 'will_ship_internationally' || 
-            field === 'expedited_shipping' || field === 'zshop_boldface') {
-          if (value === 'y' || value === 'yes' || value === 'true' || value === 'Y') {
+        if (field === 'item-is-marketplace' || field === 'will-ship-internationally' || 
+            field === 'expedited-shipping' || field === 'zshop-boldface') {
+          if (trimmedValue === 'y' || trimmedValue === 'yes' || trimmedValue === 'true' || trimmedValue === 'Y') {
             return true;
           }
-          if (value === 'n' || value === 'no' || value === 'false' || value === 'N') {
+          if (trimmedValue === 'n' || trimmedValue === 'no' || trimmedValue === 'false' || trimmedValue === 'N') {
             return false;
           }
           return null;
         }
-        return value;
+        return trimmedValue;
       }
     });
 
@@ -105,15 +82,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     await Promise.all(
       listings.map(async (listing, index) => {
         try {
-          if (!listing.seller_sku) {
+          if (!listing['seller-sku']) {
             errors.push(`Row ${index + 1}: Missing seller SKU`);
             return;
           }
 
           // Check if record exists
           const existingListing = await db.query(
-            'SELECT id FROM listings WHERE seller_sku = $1',
-            [listing.seller_sku]
+            'SELECT id FROM listings WHERE "seller-sku" = $1',
+            [listing['seller-sku']]
           );
 
           if (existingListing.rows.length > 0) {
@@ -126,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             
             if (fieldsToUpdate.length > 0) {
               const setClause = fieldsToUpdate
-                .map((key, i) => `${key} = $${i + 2}`)
+                .map((key, i) => `"${key}" = $${i + 2}`)
                 .join(', ');
               
               const values = fieldsToUpdate.map(key => listing[key]);
@@ -142,8 +119,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
             const values = keys.map(key => listing[key]);
             
+            const quotedKeys = keys.map(key => `"${key}"`).join(', ');
+            
             await db.query(
-              `INSERT INTO listings (${keys.join(', ')}) VALUES (${placeholders})`,
+              `INSERT INTO listings (${quotedKeys}) VALUES (${placeholders})`,
               values
             );
           }
