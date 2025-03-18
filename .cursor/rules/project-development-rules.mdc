@@ -1,0 +1,46 @@
+---
+description: Project Development Rules
+globs: 
+alwaysApply: false
+---
+# Design Principles
+- **Maximal Diversification of Microservices**: Break the application into small, independent microservices, each responsible for a single, well-defined functionality. This aligns with the microservices philosophy of "do one thing and do it well," enhancing maintainability and scalability.
+- **Isolation**: Ensure each microservice operates independently, relying only on external APIs rather than the internal logic of other services. This loose coupling allows individual services to be updated or replaced without disrupting the entire system.
+- **API-Driven Communication**: All interactions between microservices must occur through well-defined APIs (e.g., HTTP/REST, gRPC, or messaging queues like RabbitMQ). This standardizes communication and supports isolation.
+- **Data Management**: Assign each microservice its own database or storage where appropriate, avoiding shared databases unless necessary. Use strategies like event sourcing or API calls to maintain data consistency across services.
+- **Security**: Implement authentication and authorization (e.g., JWT tokens or OAuth) to secure inter-service communication.
+- **Error Handling and Logging**: Design each microservice to handle errors gracefully and log them for debugging and monitoring.
+
+# Implementation Guidelines
+- **Containerization**: Use Docker to encapsulate each microservice in its own container. Each container should include a `Dockerfile` specifying its runtime environment, dependencies, and startup commands.
+- **Dependency Management**: Clearly list all dependencies (e.g., libraries, frameworks, or external services) in the `Dockerfile` or a separate configuration file (e.g., `requirements.txt` for Python or `package.json` for Node.js).
+- **Documentation**: Provide comprehensive documentation for each container, including:
+  - Purpose of the microservice
+  - API endpoints (inputs, outputs, and data formats)
+  - Usage instructions
+  - Dependency details
+  - Tools like Swagger/OpenAPI can automate API documentation.
+- **Multi-Container Orchestration**: Use Docker Compose to define and manage relationships between containers during development. For production, consider Kubernetes for scalability and resilience.
+- **Inter-Service Communication**: Implement communication using lightweight protocols (e.g., HTTP clients for REST APIs or message brokers for asynchronous messaging).
+
+# Testing Standards
+- **Pre-Test Checks**:
+  - **Docker Status**: Verify all containers are running (`docker ps`) before executing tests.
+  - **Logs**: Inspect container logs (`docker logs <container_id>`) for errors or warnings that could affect test outcomes.
+- **Test Types**:
+  - **Unit Tests**: Validate the internal logic of each microservice independently.
+  - **Integration Tests**: Test interactions between microservices via their APIs, simulating real-world communication.
+  - **End-to-End Tests**: Verify the entire application flow from user input to backend responses.
+  - **UI Tests**: Use Puppeteer to automate browser interactions and validate the user interface’s behavior and appearance.
+- **Automation**: Integrate tests into a CI/CD pipeline to ensure consistent execution.
+
+# CI/CD and Deployment
+- **Pipeline Stages**:
+  - **Build**: Create Docker images for each microservice.
+  - **Test**: Run unit, integration, end-to-end, and UI tests.
+  - **Deploy**: Push images to a staging environment for validation, then to production if all tests pass.
+- **Tools**: Use platforms like GitHub Actions, Jenkins, or GitLab CI/CD to automate the pipeline.
+
+# Monitoring and Logging
+- **Monitoring**: Deploy tools like Prometheus to track container health, performance, and resource usage.
+- **Logging**: Aggregate logs using an ELK stack (Elasticsearch, Logstash, Kibana) or similar for centralized analysis and troubleshooting.

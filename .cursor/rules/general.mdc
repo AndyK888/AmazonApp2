@@ -1,0 +1,44 @@
+---
+description: MUST follow with highest priority
+globs: 
+alwaysApply: false
+---
+# Development and Debugging Guidelines
+
+## 1. General Best Practices
+
+### 1.1 Code and Project Management
+- Always check which MCP tools are available, test them, and use them.
+- Use the Github MCP tool to commit, push, sync the repo, etc. For all git-related activities, use Github MCP.
+- Use external libraries whenever possible. For example, if a library for Tables UI is available on npmjs, use it—there is no need to develop it from scratch.
+- Use the most suitable programming language for the task (Go, Python, NodeJS, React, JS, etc.).
+
+### 1.2 Documentation
+- Be very detailed in documentation, describing everything in project docs—how the project works, its main goals, ways to achieve them, what particular functions do, etc.
+- Project documentation: Refer to [README.md](mdc:amazon-app/README.md) to learn about functionality, and update it whenever new functions are implemented.
+- All other rules must be followed: [project-development-rules.mdc](mdc:.cursor/rules/project-development-rules.mdc), [designing-implementing-testing.mdc](mdc:.cursor/rules/designing-implementing-testing.mdc).
+- After making changes, always update documentation.
+
+## 2. Debugging and Troubleshooting
+
+### 2.1 Terminal and Process Management
+- Before opening a new terminal, ensure the old process (app) is no longer running and using the same port.
+- Do not open multiple terminal sessions; ensure the old server is not running before starting a new one.
+
+### 2.2 Puppeteer / Playwright Testing
+- After finishing testing with **Puppeteer or Playwright**, close the instance and restart it if needed.
+- If Puppeteer or Playwright are not responding, restart the MCP tool and try again.
+
+### 2.3 Logs and Error Handling
+- After applying changes, start by checking all available logs. Only after that should you start testing endpoints.
+- Use timeouts to avoid stalled processes.
+- Consider only **1–2 retries with a timeout** before trying anything else.
+
+## 3. Version Control and Deployment
+
+### 3.1 Applying and Committing Changes
+- After making changes, always apply them to the Github repo.
+- Ensure that commits are meaningful and follow best practices for version control.
+
+## 4. Current mandatory requirements
+- We are no longer testing the app on a local machine; instead, we are using a Docker build.

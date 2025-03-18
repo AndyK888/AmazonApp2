@@ -1,0 +1,79 @@
+---
+description: Workflow for Designing, Implementing, and Testing
+globs: 
+alwaysApply: false
+---
+# 1. Design Phase
+The design phase focuses on planning the application’s structure and interactions.
+
+- **Steps**:
+  1. **Identify Functionalities**: Analyze the application’s requirements and decompose them into discrete microservices (e.g., authentication, payment processing, user management).
+  2. **Define APIs**: Specify each microservice’s API, including endpoints, methods (GET, POST, etc.), request/response formats (e.g., JSON), and status codes. Example:
+     ```
+     GET /users/{id}
+     Response: { "id": 1, "name": "John Doe" }
+     ```
+  3. **Plan Communication**: Choose a communication method (e.g., REST over HTTP, gRPC, or Kafka) based on performance and reliability needs.
+  4. **Data Storage**: Assign storage solutions (e.g., PostgreSQL for relational data, MongoDB for unstructured data) to each microservice, ensuring isolation unless shared access is unavoidable.
+  5. **Security**: Design authentication (e.g., JWT) and authorization mechanisms for API access.
+  6. **Error Handling and Logging**: Define how errors are reported (e.g., HTTP 500 responses) and logged (e.g., to a file or centralized system).
+
+- **Output**: A detailed architecture document outlining microservices, APIs, and their interactions.
+
+# 2. Implementation Phase
+This phase translates the design into working code and containers.
+
+- **Steps**:
+  1. **Set Up Environment**: Create a repository (or monorepo) for the project and install Docker. Use a `.gitignore` to exclude unnecessary files.
+  2. **Develop Microservices**: Write code for each service, adhering to its API specification.
+  3. **Containerize**: For each microservice, create a `Dockerfile`. Example:
+     ```dockerfile
+     FROM node:16
+     WORKDIR /app
+     COPY package.json .
+     RUN npm install
+     COPY . .
+     CMD ["npm", "start"]
+     ```
+  4. **Manage Dependencies**: Define multi-container relationships in a `docker-compose.yml` file. Example:
+     ```yaml
+     version: '3'
+     services:
+       auth:
+         build: ./auth
+         ports:
+           - "3000:3000"
+       payment:
+         build: ./payment
+         ports:
+           - "3001:3001"
+     ```
+  5. **Implement Communication**: Code API calls or message publishing/subscription logic (e.g., using `axios` for HTTP requests).
+  6. **Document**: Write READMEs and API docs for each service, using tools like Swagger if applicable.
+
+- **Output**: Running containers with documented APIs and dependencies.
+
+# 3. Testing Phase
+The testing phase ensures the application works as intended.
+
+- **Steps**:
+  1. **Pre-Test Checks**:
+     - Run `docker ps` to confirm all containers are active.
+     - Run `docker logs <container_id>` for each container to check for issues.
+  2. **Unit Testing**: Test each microservice’s logic in isolation (e.g., using Jest for Node.js).
+  3. **Integration Testing**: Simulate API calls between services (e.g., with Postman or custom scripts).
+  4. **End-to-End Testing**: Test the full application flow (e.g., a user logs in, makes a payment, and sees a confirmation).
+  5. **UI Testing with Puppeteer**: Write scripts to automate UI interactions. Example:
+     ```javascript
+     const puppeteer = require('puppeteer');
+     (async () => {
+       const browser = await puppeteer.launch();
+       const page = await browser.newPage();
+       await page.goto('http://localhost:3000');
+       await page.click('#login-button');
+       await page.waitForSelector('#dashboard');
+       await browser.close();
+     })();
+     ```
+
+- **Output**: Test reports confirming functionality and identifying any issues.
