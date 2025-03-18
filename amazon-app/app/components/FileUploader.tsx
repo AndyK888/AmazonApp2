@@ -8,6 +8,8 @@ interface FileUploaderProps {
   onUploadError?: (error: string) => void;
 }
 
+type ProcessStage = 'idle' | 'uploading' | 'parsing' | 'importing' | 'completed' | 'error';
+
 const FileUploader: React.FC<FileUploaderProps> = ({ 
   onUploadComplete,
   onUploadError,
@@ -16,11 +18,19 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [processStage, setProcessStage] = useState<ProcessStage>('idle');
+  const [statusMessages, setStatusMessages] = useState<string[]>([]);
+
+  const addStatusMessage = (message: string) => {
+    setStatusMessages(prev => [...prev, message]);
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       setFile(event.target.files[0]);
       setUploadStatus(null);
+      setProcessStage('idle');
+      setStatusMessages([]);
     }
   };
 
@@ -30,14 +40,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       return;
     }
 
+    // Reset states
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadStatus('Processing your report...');
+    setProcessStage('uploading');
+    setStatusMessages([`Starting upload of ${file.name}`]);
+    
     const formData = new FormData();
     formData.append('file', file);
     
-    setIsUploading(true);
-    setUploadProgress(0);
-    setUploadStatus('Uploading...');
-    
     try {
+      // Step 1: Upload the file
+      setProcessStage('uploading');
+      addStatusMessage('Uploading file to server...');
+      
       const response = await axios.post<ListingUploadResponse>('/api/listings/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -46,11 +63,37 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           if (progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(progress);
+            
+            if (progress === 100) {
+              setProcessStage('parsing');
+              addStatusMessage('Upload complete. Parsing report data...');
+              
+              // Simulate parsing progress
+              setTimeout(() => {
+                setProcessStage('importing');
+                addStatusMessage('Parsing complete. Importing to database...');
+                
+                // Simulate database import progress
+                // In a real implementation, we'd get this from server via websockets or polling
+                setTimeout(() => {
+                  setProcessStage('completed');
+                  addStatusMessage(`Import complete. ${response.data.count || 'All'} records processed.`);
+                }, 2000);
+              }, 1500);
+            }
           }
         },
       });
       
+      // Show final status message
       setUploadStatus(response.data.message);
+      
+      // Show any errors that occurred during processing
+      if (response.data.errors && response.data.errors.length > 0) {
+        response.data.errors.forEach(error => {
+          addStatusMessage(`Error: ${error}`);
+        });
+      }
       
       if (onUploadComplete && response.data.success) {
         onUploadComplete(response.data);
@@ -61,12 +104,27 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         : 'Failed to upload file';
       
       setUploadStatus(`Error: ${errorMessage}`);
+      setProcessStage('error');
+      addStatusMessage(`Error: ${errorMessage}`);
       
       if (onUploadError) {
         onUploadError(errorMessage);
       }
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  // Get the progress percentage based on the current stage
+  const getProgressPercentage = () => {
+    switch (processStage) {
+      case 'idle': return 0;
+      case 'uploading': return uploadProgress * 0.4; // 40% of progress bar for upload
+      case 'parsing': return 40 + (uploadProgress * 0.3); // 30% for parsing
+      case 'importing': return 70 + (uploadProgress * 0.3); // 30% for DB import
+      case 'completed': return 100;
+      case 'error': return 100;
+      default: return 0;
     }
   };
   
@@ -95,13 +153,37 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         Upload File
       </button>
       
-      {isUploading && (
-        <div className={styles['file-uploader__progress']}>
-          <div 
-            className={styles['file-uploader__progress-bar']} 
-            style={{ width: `${uploadProgress}%` }}
-          ></div>
-          <span>{uploadProgress}%</span>
+      {processStage !== 'idle' && (
+        <div className={styles['file-uploader__progress-container']}>
+          <div className={styles['file-uploader__stage-indicator']}>
+            <div className={`${styles['file-uploader__stage']} ${processStage === 'uploading' || processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.completed : ''}`}>
+              Upload
+            </div>
+            <div className={`${styles['file-uploader__stage']} ${processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'importing' || processStage === 'completed' ? styles.completed : ''}`}>
+              Parse
+            </div>
+            <div className={`${styles['file-uploader__stage']} ${processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'completed' ? styles.completed : ''}`}>
+              Import
+            </div>
+            <div className={`${styles['file-uploader__stage']} ${processStage === 'completed' ? styles.active : ''}`}>
+              Complete
+            </div>
+          </div>
+          
+          <div className={styles['file-uploader__progress']}>
+            <div 
+              className={`${styles['file-uploader__progress-bar']} ${processStage === 'error' ? styles.error : ''}`}
+              style={{ width: `${getProgressPercentage()}%` }}
+            ></div>
+          </div>
+          
+          <div className={styles['file-uploader__status-log']}>
+            {statusMessages.map((message, index) => (
+              <div key={index} className={styles['file-uploader__status-message']}>
+                {message}
+              </div>
+            ))}
+          </div>
         </div>
       )}
       
