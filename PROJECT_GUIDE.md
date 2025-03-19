@@ -48,41 +48,49 @@ docker run -p 3000:3000 inventory-management
 
 The application follows a microservices architecture pattern:
 
-1. **Frontend Service**: React-based UI with TypeScript
-   - Located in `src/components`
+1. **Frontend Service**: Next.js-based UI with React and TypeScript
+   - Located in `app/components` and `app/[routes]`
    - Handles the presentation layer and user interactions
+   - Server-side rendering for improved performance
 
-2. **State Management Service**: Redux for centralized state management
-   - Located in `src/store`
-   - Manages application state and data flow
+2. **API Service**: Next.js API routes
+   - Located in `app/api`
+   - Handles data operations and communication with other services
+   - RESTful endpoints for CRUD operations
 
-3. **Routing Service**: React Router for navigation
-   - Handles navigation between different views
-   - Defines the application's route structure
+3. **Database Service**: PostgreSQL database
+   - Stores product data, duplicate issues, and identifier changes
+   - Initialized with scripts in `db/init`
+   - Schema migrations in `db/migrations`
 
-4. **Data Visualization Service**: Handsontable integration
-   - Provides the interactive table functionality
-   - Manages data display and editing capabilities
+4. **Worker Service**: Python-based background processing
+   - Located in `workers/report-processor`
+   - Processes uploaded files in the background
+   - Detects duplicates and identifier changes
 
-5. **Logging Service**: Comprehensive logging system
-   - Located in `src/utils/logger.ts`
-   - Handles application-wide logging with different levels
+5. **Cache Service**: Redis for caching and job queues
+   - Improves performance with caching
+   - Manages background jobs
+   - Tracks processing status
 
 6. **Error Handling Service**: Centralized error handling
-   - Located in `src/utils/errorHandler.ts` and `src/components/ErrorBoundary.tsx`
    - Provides consistent error handling and reporting
+   - Error boundaries for React components
 
-7. **API Service**: Centralized API communication
-   - Located in `src/services/api.ts`
-   - Handles all HTTP requests with proper error handling and logging
+7. **Authentication Service**: Basic authentication support
+   - Located in `lib/auth.ts`
+   - Provides authentication options
 
 ## Key Features
 
 - **Fully Editable Data Table**: All cells in the table are editable, allowing for easy data manipulation
 - **Column Configuration**: Specialized columns for SKU, ASIN, FNSKU, EAN, UPC, and Quantity
+- **File Upload Processing**: Comprehensive file upload system with validation and background processing
+- **Duplicate SKU Resolution**: Interactive system for detecting, reviewing, and resolving duplicate SKUs
+- **Identifier Change Tracking**: System for monitoring and acknowledging changes to product identifiers
 - **Responsive Design**: Modern UI that works across different device sizes
-- **State Management**: Consistent data flow with Redux
-- **Navigation**: Seamless navigation between views with React Router
+- **Server-side Rendering**: Improved performance and SEO with Next.js server-side rendering
+- **API Routes**: Built-in API endpoints for handling data operations
 
 ## Development Workflow
 
@@ -105,18 +113,38 @@ The application follows a microservices architecture pattern:
 
 ### Common Issues
 
-1. **npm start fails at the root directory**:
-   - Use the provided `start.sh` script which automatically navigates to the correct directory
-   - Or manually `cd amazon-app` before running npm commands
+1. **Docker build TypeScript errors**:
+   - Ensure all TypeScript types are properly defined
+   - Use proper type guards for optional properties
+   - Wrap Next.js client components using useSearchParams in Suspense boundaries
 
 2. **Docker container issues**:
    - Check logs with `docker logs <container_id>`
-   - Ensure ports are not already in use
-   - Verify the Dockerfile and docker-compose.yml are correctly configured
+   - Ensure all required services (PostgreSQL, Redis) are running
+   - Verify network communication between services
+   - Check environment variables in docker-compose.yml
 
-3. **Puppeteer testing issues**:
+3. **Database connection errors**:
+   - Ensure PostgreSQL container is healthy
+   - Check database initialization scripts
+   - Verify database credentials in environment variables
+   - Check database connection string format
+
+4. **File upload processing issues**:
+   - Verify worker service is running properly
+   - Check Redis connection for job queues
+   - Ensure upload directory permissions are correct
+   - Check logs for specific processing errors
+
+5. **Next.js development vs Docker differences**:
+   - Some features might work in development but fail in production build
+   - Always test the Docker build before deployment
+   - Use Next.js build output to identify issues
+
+6. **Puppeteer testing issues**:
    - Ensure the application is running before starting tests
    - Close and restart Puppeteer instances if they become unresponsive
+   - Target correct URLs when testing Docker containers
 
 ## Maintenance and Updates
 

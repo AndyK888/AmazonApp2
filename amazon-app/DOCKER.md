@@ -120,7 +120,7 @@ The Docker setup consists of:
 ### Frontend Service
 - Node.js 20 Alpine image
 - Production build of the React application
-- Serve package to deliver the static files
+- Next.js for server-side rendering and API routes
 - Port 3000 for accessing the application
 - Health check to ensure the container is running properly
 
@@ -131,16 +131,36 @@ The Docker setup consists of:
 - Port 5432 exposed for database connections
 - Health check to ensure the database is running properly
 
+### Worker Service
+- Python 3.11 Slim image
+- Background processing of uploaded files
+- Communication with the database and redis services
+- Processing inventory data and detecting duplicates
+- Handling identifier changes tracking
+
+### Redis Service
+- Redis 7 Alpine image
+- Cache layer for improved performance
+- Job queue for background processing tasks
+- Storage for processing status information
+- Health check to ensure the service is running properly
+
 ## Environment Variables
 
 ### Frontend
 - `NODE_ENV`: Set to "production" for production builds
 - `DATABASE_URL`: Database connection string (automatically set for container communication)
+- `REDIS_URL`: Redis connection string for caching and job queues
 
 ### Database
 - `POSTGRES_PASSWORD`: Database password (default: postgres)
 - `POSTGRES_USER`: Database username (default: postgres)
 - `POSTGRES_DB`: Database name (default: amazon_inventory)
+
+### Worker
+- `DATABASE_URL`: Database connection string (automatically set for container communication)
+- `REDIS_URL`: Redis connection string for job queues
+- `UPLOAD_DIR`: Directory for storing uploaded files
 
 ## Persistent Data
 

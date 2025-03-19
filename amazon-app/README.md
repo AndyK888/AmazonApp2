@@ -26,21 +26,33 @@ A modern web application for managing Amazon inventory with file upload capabili
   - Sortable columns
   - Resizable rows and columns
   - Context menu for additional operations
+- **Duplicate SKU Resolution**
+  - Detection of duplicate SKUs in uploaded files
+  - Interactive interface for resolving duplicate entries
+  - Options to keep, merge, or delete duplicate records
+  - Comparison view of duplicate entries
+  - Visual confirmation of resolution actions
+- **Identifier Change Tracking**
+  - Tracking changes to product identifiers (ASIN, EAN, UPC, etc.)
+  - Notification of important identifier changes
+  - Acknowledgment system for reviewed changes
+  - Detailed history of changes per SKU
+  - Filtering by acknowledgment status
 - Modern, responsive design
 - Redux state management for consistent data flow
-- React Router for navigation between views
+- Next.js 15.x for server-side rendering and routing
 - Comprehensive error handling with ErrorBoundary
 - Advanced logging system
 
 ## Technology Stack
 
+- Next.js 15.x
 - React 19.x
 - TypeScript 4.x
-- Redux Toolkit for state management
-- React Router 7.x for navigation
-- Handsontable for advanced table functionality
-- Uppy for file uploading functionality
+- PostgreSQL for data storage
+- Redis for caching and background tasks
 - Docker for containerization
+- Python for background processing
 
 ## Getting Started
 
@@ -48,7 +60,8 @@ A modern web application for managing Amazon inventory with file upload capabili
 
 - Node.js 16.x or higher
 - npm 8.x or higher
-- Docker (optional, for containerized deployment)
+- Docker (for containerized deployment)
+- Python 3.11 (for background processing)
 
 ### Development Setup
 
@@ -65,53 +78,50 @@ npm install
 
 3. Start the development server:
 ```bash
-npm start
+npm run dev
 ```
 
 The application will be available at `http://localhost:3000`
 
 ### Docker Setup
 
-1. Build the Docker image:
+1. Build and run the containers:
 ```bash
-docker build -t inventory-management .
+docker compose -f docker-compose.yml build
+docker compose -f docker-compose.yml up -d
 ```
 
-2. Run the container:
-```bash
-docker run -p 3000:3000 inventory-management
-```
-
-3. Run with docker-compose:
-```bash
-docker-compose up
-```
+The application will be available at `http://localhost:3000`
 
 ## Project Structure
 
 ```
 amazon-app/
-├── src/
-│   ├── components/
-│   │   ├── AllListingReport.tsx  # File upload and listing display
-│   │   ├── FileUploader.tsx      # File upload component using Uppy
-│   │   ├── InventoryTable.tsx    # Main table component for products
-│   │   ├── ErrorBoundary.tsx     # Error handling component
-│   │   └── NavLink.tsx           # Navigation component
-│   ├── store/                    # Redux store configuration
-│   │   ├── index.ts              # Store setup
-│   │   ├── hooks.ts              # Custom Redux hooks
-│   │   ├── middleware/           # Custom middleware
-│   │   └── slices/               # Redux slices for state management
-│   ├── services/                 # API services
-│   ├── utils/                    # Utility functions
-│   │   ├── errorHandler.ts       # Global error handling
-│   │   └── logger.ts             # Logging functionality
-│   ├── App.tsx                   # Main application component
-│   ├── App.css                   # Application styles
-│   └── index.tsx                 # Application entry point
-├── public/
-├── Dockerfile                    # Docker configuration
+├── app/
+│   ├── api/                       # API routes
+│   │   ├── duplicates/            # Duplicate SKU handling routes
+│   │   └── listings/              # Listing data routes
+│   ├── components/                # Shared React components
+│   │   ├── DuplicateNotification.tsx  # Notification component for duplicates
+│   │   ├── DuplicateResolution.tsx    # Resolution interface for duplicates
+│   │   ├── FileUploader.tsx           # File upload component
+│   │   ├── Navbar.tsx                 # Navigation component
+│   │   └── ProcessingStatus.tsx       # Status tracking component
+│   ├── duplicates/                # Duplicate resolution pages
+│   ├── identifier-changes/        # Identifier change tracking pages
+│   ├── layout.tsx                 # Root layout component
+│   └── page.tsx                   # Home page component
+├── db/                           # Database initialization and migrations
+│   ├── init/                     # Database initialization scripts
+│   └── migrations/               # Database migration scripts
+├── lib/                          # Utility libraries
+│   └── auth.ts                   # Authentication utilities
+├── public/                       # Static assets
+├── scripts/                      # Utility scripts
+├── types/                        # TypeScript type definitions
+├── workers/                      # Background processing workers
+│   └── report-processor/         # File processing worker
+├── Dockerfile                    # Frontend Docker configuration
 ├── docker-compose.yml            # Multi-container configuration
 └── package.json                  # Project dependencies
 ```
@@ -146,6 +156,54 @@ Features:
 - Error handling for upload failures
 - Responsive design with appropriate spacing and visual hierarchy
 
+### ProcessingStatus
+
+Component for displaying the current status of file processing tasks.
+
+Props:
+- `fileId`: ID of the file being processed
+- `onComplete`: Callback function when processing completes
+- `onError`: Callback function when processing encounters an error
+
+Features:
+- Real-time status updates
+- Progress indicators
+- Error display with detailed messages
+- Status message history
+- Auto-refresh capability
+- Completion notification
+
+### DuplicateNotification
+
+Component that notifies users of duplicate SKUs that need resolution.
+
+Props:
+- `count`: Number of duplicate SKUs detected
+- `onResolveClick`: Callback function when the resolve button is clicked
+
+Features:
+- Prominent notification banner
+- Clear messaging about duplicate issues
+- Action button to navigate to resolution interface
+- Dismissible display
+
+### DuplicateResolution
+
+Component for resolving duplicate SKU issues interactively.
+
+Props:
+- `issueId`: ID of the duplicate issue to resolve
+- `onResolved`: Callback function when resolution is complete
+
+Features:
+- Loading state during data fetching
+- Error handling for API failures
+- Comparison table of duplicate entries
+- Multiple resolution options (keep, merge, delete)
+- Detailed view of all product attributes
+- Confirmation step before applying changes
+- Success and error state handling
+
 ### InventoryTable
 
 Component that renders the interactive product data table.
@@ -164,15 +222,40 @@ Features:
 
 This application follows a microservices architecture pattern with:
 
-1. **Frontend Service**: React-based user interface with TypeScript for type safety
-2. **State Management Service**: Redux for centralized state management
-3. **Routing Service**: React Router for navigation between different views
-4. **Data Visualization Service**: Handsontable for advanced table functionality
-5. **File Upload Service**: Uppy for handling file uploads
+1. **Frontend Service**: Next.js-based React application with TypeScript for type safety and server-side rendering
+2. **API Service**: Server-side API routes built into Next.js for handling data requests and operations
+3. **Database Service**: PostgreSQL database for persistent storage of inventory data
+4. **Cache Service**: Redis for caching and background job management
+5. **Worker Service**: Python-based background worker for processing uploaded files
 6. **Error Handling Service**: Centralized error handling with custom error types
 7. **Logging Service**: Comprehensive logging system with different log levels
 
-Each service is isolated and communicates through well-defined interfaces, following the project development rules for maximal diversification and isolation.
+This architecture is containerized using Docker, allowing for easy deployment and scaling. The services communicate through well-defined APIs, following the project development rules for maximal diversification and isolation.
+
+### Data Flow
+
+1. **File Upload Process**:
+   - User uploads a file through the FileUploader component
+   - File is sent to the API Service for initial validation
+   - Valid files are saved and queued for processing
+   - Worker Service processes the file in the background
+   - Processing status is tracked in Redis and can be monitored via the ProcessingStatus component
+
+2. **Duplicate Resolution Process**:
+   - System detects duplicate SKUs during file processing
+   - User is notified through the DuplicateNotification component
+   - User navigates to the duplicate resolution interface
+   - User selects a resolution strategy for each duplicate
+   - Selected actions are sent to the API Service
+   - Database is updated according to the resolution strategy
+
+3. **Identifier Change Tracking**:
+   - System tracks changes to product identifiers
+   - Changes are stored in the database with timestamps
+   - User can view and acknowledge changes through the identifier changes interface
+   - Acknowledgments are recorded in the database
+
+Each process is isolated but communicated through well-defined interfaces, ensuring maintainability and scalability.
 
 ## Logging System
 
