@@ -230,6 +230,8 @@ export default function AllListingsReportPage() {
       <FileUploader 
         onUploadComplete={handleUploadComplete}
         onUploadError={(errorMsg) => setError(errorMsg)}
+        apiEndpoint="/api/all-listings-report/upload"
+        statusEndpoint="/api/all-listings-report/upload/status"
       />
       
       {error && (

@@ -7,6 +7,8 @@ import ProcessingStatus from './ProcessingStatus';
 interface FileUploaderProps {
   onUploadComplete?: (response: ListingUploadResponse) => void;
   onUploadError?: (error: string) => void;
+  apiEndpoint?: string;
+  statusEndpoint?: string;
 }
 
 type ProcessStage = 'idle' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'error';
@@ -14,6 +16,8 @@ type ProcessStage = 'idle' | 'uploading' | 'uploaded' | 'processing' | 'complete
 const FileUploader: React.FC<FileUploaderProps> = ({ 
   onUploadComplete,
   onUploadError,
+  apiEndpoint = '/api/listings/upload',
+  statusEndpoint = '/api/listings/upload/status'
 }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -58,7 +62,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       setProcessStage('uploading');
       addStatusMessage('Uploading file to server...');
       
-      const response = await axios.post<ListingUploadResponse>('/api/listings/upload', formData, {
+      const response = await axios.post<ListingUploadResponse>(apiEndpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -199,7 +203,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
 
       {/* Show processing status component once file is uploaded */}
       {fileId && (processStage === 'uploaded' || processStage === 'processing' || processStage === 'completed') && (
-        <ProcessingStatus fileId={fileId} onComplete={handleProcessingComplete} />
+        <ProcessingStatus 
+          fileId={fileId} 
+          onComplete={handleProcessingComplete} 
+          statusEndpoint={statusEndpoint}
+        />
       )}
     </div>
   );

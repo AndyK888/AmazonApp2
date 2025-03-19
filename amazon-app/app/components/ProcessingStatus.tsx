@@ -6,6 +6,7 @@ import styles from './ProcessingStatus.module.css';
 interface ProcessingStatusProps {
   fileId?: string;
   onComplete?: (success: boolean) => void;
+  statusEndpoint?: string;
 }
 
 interface FileStatus {
@@ -22,7 +23,7 @@ interface FileStatus {
   completedAt?: string;
 }
 
-export default function ProcessingStatus({ fileId, onComplete }: ProcessingStatusProps) {
+export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }: ProcessingStatusProps) {
   const [status, setStatus] = useState<FileStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -33,7 +34,23 @@ export default function ProcessingStatus({ fileId, onComplete }: ProcessingStatu
     const fetchStatus = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/listings/upload/status/${fileId}`);
+        
+        // Determine the correct URL format based on the endpoint provided
+        let url;
+        if (statusEndpoint && statusEndpoint.includes('?')) {
+          // Endpoint already has a query parameter
+          url = `${statusEndpoint}&fileId=${fileId}`;
+        } else if (statusEndpoint && !statusEndpoint.includes('/status/')) {
+          // Endpoint uses query parameters
+          url = `${statusEndpoint}?fileId=${fileId}`;
+        } else {
+          // Endpoint uses path parameters
+          url = statusEndpoint 
+            ? `${statusEndpoint}/${fileId}`
+            : `/api/listings/upload/status/${fileId}`;
+        }
+        
+        const response = await fetch(url);
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -68,7 +85,7 @@ export default function ProcessingStatus({ fileId, onComplete }: ProcessingStatu
     }, 2000);
 
     return () => clearInterval(intervalId);
-  }, [fileId, status?.status, onComplete]);
+  }, [fileId, status?.status, onComplete, statusEndpoint]);
 
   if (!fileId) {
     return null;
