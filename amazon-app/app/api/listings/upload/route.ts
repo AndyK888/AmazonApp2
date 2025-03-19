@@ -2,8 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parse } from 'papaparse';
 import { db } from '@/lib/db';
 import { Listing, ListingUploadResponse } from '@/types/listing';
+import { randomUUID } from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { createClient } from 'redis';
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+// Create Redis client
+const getRedisClient = async () => {
+  const client = createClient({
+    url: process.env.REDIS_URL || 'redis://redis:6379'
+  });
+  
+  await client.connect();
+  return client;
+};
+
+export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -24,122 +38,82 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }, { status: 400 });
     }
 
-    // Read the file
-    const fileText = await file.text();
+    // Create a unique file ID
+    const fileId = randomUUID();
     
-    // Parse the CSV/tab-delimited file
-    const results = parse(fileText, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: '\t',
-      transformHeader: (header) => {
-        // Keep headers as they are with hyphens, to match our database columns
-        return header.trim();
-      },
-      transform: (value, field) => {
-        // Trim whitespace and handle empty strings
-        if (value === undefined || value === '') {
-          return null;
-        }
-        
-        const trimmedValue = typeof value === 'string' ? value.trim() : value;
-        
-        // Convert string values to appropriate types
-        if (field === 'price') {
-          return trimmedValue ? parseFloat(trimmedValue) : null;
-        }
-        if (field === 'quantity' || field === 'pending-quantity') {
-          return trimmedValue ? parseInt(trimmedValue, 10) : 0;
-        }
-        if (field === 'item-is-marketplace' || field === 'will-ship-internationally' || 
-            field === 'expedited-shipping' || field === 'zshop-boldface') {
-          if (trimmedValue === 'y' || trimmedValue === 'yes' || trimmedValue === 'true' || trimmedValue === 'Y') {
-            return true;
-          }
-          if (trimmedValue === 'n' || trimmedValue === 'no' || trimmedValue === 'false' || trimmedValue === 'N') {
-            return false;
-          }
-          return null;
-        }
-        return trimmedValue;
-      }
-    });
-
-    if (results.errors.length > 0) {
+    // Create uploads directory if it doesn't exist
+    const uploadsDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    
+    // Save the file
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const filePath = path.join(uploadsDir, `${fileId}-${filename}`);
+    fs.writeFileSync(filePath, buffer);
+    
+    // Count approximate number of rows
+    const fileText = await file.text();
+    const lineCount = fileText.split('\n').length - 1; // subtract header row
+    
+    // Store file information in database
+    await db.query(
+      `INSERT INTO uploaded_files (
+         id, original_name, file_path, file_size, mime_type, status, total_rows, 
+         created_at, updated_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())`,
+      [
+        fileId,
+        file.name,
+        filePath,
+        buffer.length,
+        file.type || 'text/plain',
+        'pending',
+        lineCount
+      ]
+    );
+    
+    // Queue task for background processing
+    try {
+      const redis = await getRedisClient();
+      
+      // Create a Celery-compatible task message
+      const taskId = randomUUID();
+      const task = {
+        id: taskId,
+        task: 'process_report',
+        args: [filePath, fileId],
+        kwargs: {}
+      };
+      
+      // Add task to Celery queue
+      await redis.lPush('celery', JSON.stringify(task));
+      await redis.quit();
+      
+      return NextResponse.json({
+        success: true,
+        message: 'File uploaded and queued for processing',
+        fileId: fileId,
+        status: 'pending'
+      });
+    } catch (redisError) {
+      console.error('Error queueing task:', redisError);
+      
+      // Update file status to error
+      await db.query(
+        `UPDATE uploaded_files 
+         SET status = 'error', error_message = $1, updated_at = NOW() 
+         WHERE id = $2`,
+        [`Failed to queue processing task: ${(redisError as Error).message}`, fileId]
+      );
+      
       return NextResponse.json({ 
         success: false, 
-        message: 'Error parsing file',
-        errors: results.errors.map(error => error.message)
-      }, { status: 400 });
+        message: `Error queueing processing task: ${(redisError as Error).message}`,
+        fileId: fileId
+      }, { status: 500 });
     }
-
-    // Process the data
-    const listings = results.data as any[];
-    const errors: string[] = [];
-    let processedCount = 0;
-
-    // Batch process listings
-    await Promise.all(
-      listings.map(async (listing, index) => {
-        try {
-          if (!listing['seller-sku']) {
-            errors.push(`Row ${index + 1}: Missing seller SKU`);
-            return;
-          }
-
-          // Check if record exists
-          const existingListing = await db.query(
-            'SELECT id FROM listings WHERE "seller-sku" = $1',
-            [listing['seller-sku']]
-          );
-
-          if (existingListing.rows.length > 0) {
-            // Update existing record
-            const id = existingListing.rows[0].id;
-            const keys = Object.keys(listing);
-            
-            // Only include fields that have values
-            const fieldsToUpdate = keys.filter(key => listing[key] !== undefined && listing[key] !== null);
-            
-            if (fieldsToUpdate.length > 0) {
-              const setClause = fieldsToUpdate
-                .map((key, i) => `"${key}" = $${i + 2}`)
-                .join(', ');
-              
-              const values = fieldsToUpdate.map(key => listing[key]);
-              
-              await db.query(
-                `UPDATE listings SET ${setClause} WHERE id = $1`,
-                [id, ...values]
-              );
-            }
-          } else {
-            // Insert new record
-            const keys = Object.keys(listing).filter(key => listing[key] !== undefined);
-            const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-            const values = keys.map(key => listing[key]);
-            
-            const quotedKeys = keys.map(key => `"${key}"`).join(', ');
-            
-            await db.query(
-              `INSERT INTO listings (${quotedKeys}) VALUES (${placeholders})`,
-              values
-            );
-          }
-          
-          processedCount++;
-        } catch (error) {
-          errors.push(`Row ${index + 1}: ${(error as Error).message}`);
-        }
-      })
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: `Successfully processed ${processedCount} listings`,
-      count: processedCount,
-      errors: errors.length > 0 ? errors : undefined
-    });
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ 

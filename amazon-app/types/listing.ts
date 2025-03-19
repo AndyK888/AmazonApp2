@@ -36,6 +36,7 @@ export interface Listing {
 export interface ListingUploadResponse {
   success: boolean;
   message: string;
+  fileId?: string;
   count?: number;
   errors?: string[];
 } 

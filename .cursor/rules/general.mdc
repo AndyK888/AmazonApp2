@@ -42,3 +42,4 @@ alwaysApply: true
 
 ## 4. Current mandatory requirements
 - We are no longer testing the app on a local machine; instead, we are using a Docker build.
+- For "All Listing Report" page, we are using a schema that is presented in All_Listing_Report.txt it should match the corresponding database. The file is available in the project's directory.

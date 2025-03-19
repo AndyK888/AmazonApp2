@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Navbar from './components/Navbar';
+import DuplicateNotification from './components/DuplicateNotification';
 import './globals.css';
 
 export default function RootLayout({
@@ -18,6 +19,7 @@ export default function RootLayout({
       </head>
       <body>
         <Navbar />
+        <DuplicateNotification />
         <main>{children}</main>
       </body>
     </html>

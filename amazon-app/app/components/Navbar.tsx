@@ -32,6 +32,9 @@ const Navbar: React.FC = () => {
           <Link href="/all-listings-report" className={styles['nav-link']}>All Listings Report</Link>
         </li>
         <li className={styles['nav-item']}>
+          <Link href="/identifier-changes" className={styles['nav-link']}>Identifier Changes</Link>
+        </li>
+        <li className={styles['nav-item']}>
           <Link href="/settings" className={styles['nav-link']}>Settings</Link>
         </li>
       </ul>

@@ -1,0 +1,93 @@
+.notificationContainer {
+  margin: 16px 0;
+  border: 1px solid #ffcc00;
+  background-color: #fffbeb;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.notificationHeader {
+  background-color: #ffcc00;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warningIcon {
+  font-size: 20px;
+}
+
+.notificationHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.notificationBody {
+  padding: 16px;
+}
+
+.notificationBody p {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.issuesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.issueItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.issueItem:last-child {
+  border-bottom: none;
+}
+
+.issueInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fileName {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.fileDate, .duplicateCount {
+  font-size: 12px;
+  color: #666;
+}
+
+.duplicateCount {
+  background-color: #f8f8f8;
+  padding: 2px 6px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.resolveButton {
+  background-color: #0070f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.resolveButton:hover {
+  background-color: #0060df;
+} 

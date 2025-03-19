@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { ListingUploadResponse } from '@/types/listing';
 import styles from './FileUploader.module.css';
+import ProcessingStatus from './ProcessingStatus';
 
 interface FileUploaderProps {
   onUploadComplete?: (response: ListingUploadResponse) => void;
   onUploadError?: (error: string) => void;
 }
 
-type ProcessStage = 'idle' | 'uploading' | 'parsing' | 'importing' | 'completed' | 'error';
+type ProcessStage = 'idle' | 'uploading' | 'uploaded' | 'processing' | 'completed' | 'error';
 
 const FileUploader: React.FC<FileUploaderProps> = ({ 
   onUploadComplete,
@@ -20,6 +21,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [processStage, setProcessStage] = useState<ProcessStage>('idle');
   const [statusMessages, setStatusMessages] = useState<string[]>([]);
+  const [fileId, setFileId] = useState<string | null>(null);
 
   const addStatusMessage = (message: string) => {
     setStatusMessages(prev => [...prev, message]);
@@ -31,6 +33,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       setUploadStatus(null);
       setProcessStage('idle');
       setStatusMessages([]);
+      setFileId(null);
     }
   };
 
@@ -43,7 +46,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     // Reset states
     setIsUploading(true);
     setUploadProgress(0);
-    setUploadStatus('Processing your report...');
+    setUploadStatus('Uploading your report...');
     setProcessStage('uploading');
     setStatusMessages([`Starting upload of ${file.name}`]);
     
@@ -51,7 +54,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     formData.append('file', file);
     
     try {
-      // Step 1: Upload the file
+      // Upload the file
       setProcessStage('uploading');
       addStatusMessage('Uploading file to server...');
       
@@ -65,39 +68,24 @@ const FileUploader: React.FC<FileUploaderProps> = ({
             setUploadProgress(progress);
             
             if (progress === 100) {
-              setProcessStage('parsing');
-              addStatusMessage('Upload complete. Parsing report data...');
-              
-              // Simulate parsing progress
-              setTimeout(() => {
-                setProcessStage('importing');
-                addStatusMessage('Parsing complete. Importing to database...');
-                
-                // Simulate database import progress
-                // In a real implementation, we'd get this from server via websockets or polling
-                setTimeout(() => {
-                  setProcessStage('completed');
-                  addStatusMessage(`Import complete. ${response.data.count || 'All'} records processed.`);
-                }, 2000);
-              }, 1500);
+              addStatusMessage('Upload complete. File will be processed in the background.');
             }
           }
         },
       });
       
-      // Show final status message
-      setUploadStatus(response.data.message);
-      
-      // Show any errors that occurred during processing
-      if (response.data.errors && response.data.errors.length > 0) {
-        response.data.errors.forEach(error => {
-          addStatusMessage(`Error: ${error}`);
-        });
+      // File was uploaded, now it will be processed in the background
+      if (response.data.success) {
+        setProcessStage('uploaded');
+        if (response.data.fileId) {
+          setFileId(response.data.fileId);
+        }
+        setUploadStatus('File uploaded successfully. Processing will continue in the background.');
+        addStatusMessage('File queued for background processing. You can check the status below.');
+      } else {
+        throw new Error(response.data.message || 'File upload failed');
       }
       
-      if (onUploadComplete && response.data.success) {
-        onUploadComplete(response.data);
-      }
     } catch (error) {
       const errorMessage = axios.isAxiosError(error) && error.response?.data?.message
         ? error.response.data.message
@@ -115,17 +103,36 @@ const FileUploader: React.FC<FileUploaderProps> = ({
     }
   };
 
-  // Get the progress percentage based on the current stage
-  const getProgressPercentage = () => {
-    switch (processStage) {
-      case 'idle': return 0;
-      case 'uploading': return uploadProgress * 0.4; // 40% of progress bar for upload
-      case 'parsing': return 40 + (uploadProgress * 0.3); // 30% for parsing
-      case 'importing': return 70 + (uploadProgress * 0.3); // 30% for DB import
-      case 'completed': return 100;
-      case 'error': return 100;
-      default: return 0;
+  // Handle processing completion
+  const handleProcessingComplete = (success: boolean) => {
+    setProcessStage(success ? 'completed' : 'error');
+    
+    if (success) {
+      addStatusMessage('File processing completed successfully!');
+      if (onUploadComplete) {
+        onUploadComplete({
+          success: true,
+          message: 'File processed successfully',
+          count: 0 // We don't know the count here, it would be shown in the ProcessingStatus component
+        });
+      }
+    } else {
+      addStatusMessage('File processing failed. See error details below.');
+      if (onUploadError) {
+        onUploadError('File processing failed');
+      }
     }
+  };
+
+  // Get the progress percentage for the upload stage only
+  const getProgressPercentage = () => {
+    if (processStage === 'uploading') {
+      return uploadProgress;
+    } else if (processStage === 'uploaded' || processStage === 'processing' || 
+              processStage === 'completed' || processStage === 'error') {
+      return 100;
+    }
+    return 0;
   };
   
   return (
@@ -138,7 +145,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
           type="file" 
           accept=".txt,.csv" 
           onChange={handleFileChange} 
-          disabled={isUploading} 
+          disabled={isUploading || processStage === 'processing'} 
         />
         <p className={styles['file-uploader__filename']}>
           {file ? file.name : 'No file selected'}
@@ -152,34 +159,27 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       <button 
         className={styles['file-uploader__button']} 
         onClick={handleUpload} 
-        disabled={!file || isUploading}
+        disabled={!file || isUploading || processStage === 'processing' || processStage === 'uploaded'}
       >
         Upload File
       </button>
       
-      {processStage !== 'idle' && (
+      {processStage !== 'idle' && processStage !== 'error' && (
         <div className={styles['file-uploader__progress-container']}>
-          <div className={styles['file-uploader__stage-indicator']}>
-            <div className={`${styles['file-uploader__stage']} ${processStage === 'uploading' || processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.completed : ''}`}>
-              Upload
-            </div>
-            <div className={`${styles['file-uploader__stage']} ${processStage === 'parsing' || processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'importing' || processStage === 'completed' ? styles.completed : ''}`}>
-              Parse
-            </div>
-            <div className={`${styles['file-uploader__stage']} ${processStage === 'importing' || processStage === 'completed' ? styles.active : ''} ${processStage === 'completed' ? styles.completed : ''}`}>
-              Import
-            </div>
-            <div className={`${styles['file-uploader__stage']} ${processStage === 'completed' ? styles.active : ''}`}>
-              Complete
-            </div>
-          </div>
-          
-          <div className={styles['file-uploader__progress']}>
-            <div 
-              className={`${styles['file-uploader__progress-bar']} ${processStage === 'error' ? styles.error : ''}`}
-              style={{ width: `${getProgressPercentage()}%` }}
-            ></div>
-          </div>
+          {/* Only show upload progress for the actual upload phase */}
+          {processStage === 'uploading' && (
+            <>
+              <div className={styles['file-uploader__progress']}>
+                <div 
+                  className={styles['file-uploader__progress-bar']}
+                  style={{ width: `${getProgressPercentage()}%` }}
+                ></div>
+              </div>
+              <div className={styles['file-uploader__progress-text']}>
+                Uploading file: {getProgressPercentage()}%
+              </div>
+            </>
+          )}
           
           <div className={styles['file-uploader__status-log']}>
             {statusMessages.map((message, index) => (
@@ -195,6 +195,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({
         <p className={`${styles['file-uploader__status']} ${uploadStatus.startsWith('Error') ? styles.error : styles.success}`}>
           {uploadStatus}
         </p>
+      )}
+
+      {/* Show processing status component once file is uploaded */}
+      {fileId && (processStage === 'uploaded' || processStage === 'processing' || processStage === 'completed') && (
+        <ProcessingStatus fileId={fileId} onComplete={handleProcessingComplete} />
       )}
     </div>
   );
