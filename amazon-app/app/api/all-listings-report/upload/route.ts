@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
         kwargs: {},
         properties: {
           delivery_mode: 2,  // persistent
-          correlation_id: taskId
+          correlation_id: taskId,
+          delivery_tag: taskId  // Add delivery_tag
         }
       };
       
