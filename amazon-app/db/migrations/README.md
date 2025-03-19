@@ -1,72 +1,50 @@
 # Database Migrations
 
-This directory contains database migration scripts for the Amazon Inventory Management application using Flyway.
+This directory contains database migrations managed by Flyway.
 
 ## Migration Files
 
-Migration files follow the Flyway naming convention:
+Migrations files should follow these conventions:
 
-```
-V<version>__<description>.sql
-```
+1. **Versioned Migrations**: Named using the pattern `V{version}__{description}.sql` where:
+   - `{version}` is a number (e.g., 1, 2, 3)
+   - `{description}` uses underscores instead of spaces
+   
+   Example: `V1__Initial_Schema.sql`
 
-For example:
-- `V1__Initial_Schema.sql` - Creates the initial database schema
-- `V2__Add_Categories_Table.sql` - Adds a new table for categories
-- `V3__Add_User_Management.sql` - Adds user management functionality
+2. **Repeatable Migrations**: Named using the pattern `R__{description}.sql`
+
+## Current Migrations
+
+- `V1__Initial_Schema.sql`: Base schema with tables and indices
+- `V2__Identifier_Changes_Duplicates.sql`: Adds views for duplicate detection
 
 ## Running Migrations
 
-### Using Docker Compose
+Migrations are applied automatically during container startup. To manually run migrations:
 
-```bash
-# Run migrations with Docker Compose
+```
 docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
 ```
 
-### Using Flyway CLI directly
+## Checking Migration Status
 
-If you have Flyway CLI installed, you can run:
+To check the migration status:
 
-```bash
-flyway -url=jdbc:postgresql://localhost:5432/amazon_inventory \
-  -user=postgres \
-  -password=postgres \
-  -locations=filesystem:./migrations \
-  migrate
 ```
-
-## Migration Best Practices
-
-1. **Never modify existing migrations**. Instead, create a new migration to adjust the schema.
-2. **Keep migrations idempotent** when possible. Use `IF NOT EXISTS` and `IF EXISTS` clauses.
-3. **Use descriptive names** for migration files.
-4. **Test migrations** in a development environment before applying them to production.
-5. **Include both UP and DOWN changes** where feasible (Flyway supports undo operations with commercial versions).
-6. **Keep migrations small and focused** on specific changes.
+docker exec amazon-app-db-1 psql -U postgres -d amazon_inventory -c "SELECT * FROM flyway_schema_history;"
+```
 
 ## Creating New Migrations
 
-To create a new migration:
+1. Create a new SQL file following the naming convention
+2. Add your SQL statements to create/modify database objects
+3. Test your migration locally
+4. Run Flyway to apply the migration
 
-1. Create a new SQL file in this directory with the proper naming convention:
-   ```
-   V<next_version>__<descriptive_name>.sql
-   ```
-   Where `<next_version>` is the next sequential version number.
+## Important Notes
 
-2. Write your SQL migration script, following best practices.
-
-3. Test the migration in a development environment.
-
-4. Run the migration using one of the methods described above.
-
-## Version Management
-
-Flyway tracks which migrations have been applied in a special table called `flyway_schema_history`. This ensures migrations are only applied once and in the correct order.
-
-To see which migrations have been applied:
-
-```sql
-SELECT * FROM flyway_schema_history ORDER BY installed_rank;
-``` 
+- Always ensure that migrations are idempotent where possible
+- Use `IF NOT EXISTS` clauses for creating objects
+- Database schema is versioned and tracked in the `flyway_schema_history` table
+- Avoid modifying or renaming existing migration files 

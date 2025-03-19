@@ -164,11 +164,11 @@ ALTER TABLE identifier_changes
     ADD COLUMN IF NOT EXISTS listing_id INTEGER REFERENCES listings(id);
 
 -- Create indices for identifier tables
-CREATE INDEX IF NOT EXISTS idx_product_identifiers_sku ON product_identifiers("seller-sku");
-CREATE INDEX IF NOT EXISTS idx_product_identifiers_asin ON product_identifiers("asin");
-CREATE INDEX IF NOT EXISTS idx_identifier_changes_sku ON identifier_changes("seller-sku");
-CREATE INDEX IF NOT EXISTS idx_identifier_changes_type ON identifier_changes("identifier_type");
-CREATE INDEX IF NOT EXISTS idx_identifier_changes_acknowledged ON identifier_changes("acknowledged");
+CREATE INDEX IF NOT EXISTS idx_product_identifiers_sku ON product_identifiers(seller_sku);
+CREATE INDEX IF NOT EXISTS idx_product_identifiers_asin ON product_identifiers(asin);
+CREATE INDEX IF NOT EXISTS idx_identifier_changes_sku ON identifier_changes(seller_sku);
+CREATE INDEX IF NOT EXISTS idx_identifier_changes_type ON identifier_changes(identifier_type);
+CREATE INDEX IF NOT EXISTS idx_identifier_changes_acknowledged ON identifier_changes(acknowledged);
 
 -- Add trigger to update timestamps
 DROP TRIGGER IF EXISTS update_product_identifiers_updated_at ON product_identifiers;
@@ -182,16 +182,16 @@ DROP VIEW IF EXISTS unacknowledged_identifier_changes CASCADE;
 CREATE VIEW unacknowledged_identifier_changes AS
 SELECT 
     ic.*,
-    pi."asin",
-    pi."upc",
-    pi."ean",
-    pi."isbn",
+    pi.asin,
+    pi.upc,
+    pi.ean,
+    pi.fnsku,
     l."item-name",
     uf.original_name as file_name
 FROM 
     identifier_changes ic
 LEFT JOIN
-    product_identifiers pi ON ic."seller-sku" = pi."seller-sku"
+    product_identifiers pi ON ic.seller_sku = pi.seller_sku
 LEFT JOIN
     listings l ON ic.listing_id = l.id
 LEFT JOIN
@@ -212,9 +212,7 @@ CREATE TABLE IF NOT EXISTS duplicate_items (
 );
 
 -- Create indices for duplicate items table
-CREATE INDEX IF NOT EXISTS idx_duplicate_items_sku ON duplicate_items("seller-sku");
-CREATE INDEX IF NOT EXISTS idx_duplicate_items_asin ON duplicate_items("asin");
-CREATE INDEX IF NOT EXISTS idx_duplicate_items_resolved ON duplicate_items("resolved");
+CREATE INDEX IF NOT EXISTS idx_duplicate_items_sku ON duplicate_items(sku);
 
 -- Create function to update timestamps
 CREATE OR REPLACE FUNCTION update_duplicate_items_timestamp()

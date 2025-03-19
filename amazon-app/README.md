@@ -379,3 +379,29 @@ npm run test:e2e
 ## License
 
 This project is licensed under the MIT License.
+
+## Database Migrations
+
+The application uses Flyway for database migrations. Migrations are automatically applied during container startup, but can also be run manually.
+
+### Migration Files
+
+Migration files are located in the `db/migrations` directory and follow the Flyway naming convention:
+- `V{version}__{description}.sql` for versioned migrations
+- `R__{description}.sql` for repeatable migrations
+
+### Running Migrations Manually
+
+To run migrations manually:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
+```
+
+### Creating New Migrations
+
+1. Create a new SQL file in the `db/migrations` directory following the naming convention
+2. Test your migration locally
+3. Commit the migration file to version control
+
+For more information, see the [migrations README](/db/migrations/README.md).
