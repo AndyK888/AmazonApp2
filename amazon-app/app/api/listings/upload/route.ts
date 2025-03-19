@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
         task: 'process_report',
         args: [filePath, fileId],
         kwargs: {},
+        exchange: 'celery',
+        routing_key: 'celery',
         properties: {
           delivery_mode: 2,  // persistent
           correlation_id: taskId,
