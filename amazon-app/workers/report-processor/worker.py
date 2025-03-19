@@ -17,6 +17,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger('report_processor')
 
+# Log worker startup
+logger.info("Worker starting up...")
+
 # Connect to Redis
 app = Celery(
     'report_processor',
@@ -128,7 +131,7 @@ def process_report(file_path, file_id, user_id=None):
         # Re-raise the exception for Celery to handle
         raise
 
-def process_file_without_duplicates(df, file_id, user_id=None):
+def process_file_without_duplicates(df, file_id, user_id=None, report_type='default'):
     """Process a file that has no duplicates or has been resolved"""
     try:
         # Ensure no duplicate SKUs in the input file by keeping only the first occurrence
@@ -183,410 +186,286 @@ def process_file_without_duplicates(df, file_id, user_id=None):
                             logger.warning(f"Skipping row without seller-sku: {listing_data}")
                             continue
                         
-                        seller_sku = listing_data['seller-sku']
-                        asin = listing_data.get('asin1') or listing_data.get('asin')
+                        # Special handling for All Listings Reports
+                        if report_type == 'all_listings':
+                            # Handle any specific transformations needed for all listings report
+                            # For example, map different column names that might be in this report format
+                            if 'open-date' in listing_data:
+                                listing_data['open-date'] = listing_data['open-date'][:19]  # Truncate to fit timestamp format
+                            
+                            # Additional mappings specific to All Listings Report can be added here
                         
-                        # Determine product identifiers
-                        upc = None
-                        ean = None
-                        if 'product-id-type' in listing_data and 'product-id' in listing_data:
-                            if listing_data['product-id-type'] == '3':
-                                upc = listing_data['product-id']
-                            elif listing_data['product-id-type'] == '4':
-                                ean = listing_data['product-id']
-                        
-                        fnsku = listing_data.get('fnsku')
-                        
-                        # Check for existing product identifiers
+                        # Check if this SKU already exists in the database
+                        sku = listing_data['seller-sku']
                         cur.execute(
-                            'SELECT * FROM product_identifiers WHERE seller_sku = %s',
-                            (seller_sku,)
+                            "SELECT id, asin, upc, ean FROM listings WHERE seller_sku = %s",
+                            (sku,)
                         )
                         existing = cur.fetchone()
                         
+                        # Track identifier changes if this is an update
                         if existing:
-                            # Check for changes compared to current values
-                            id_val, existing_sku, existing_upc, existing_ean, existing_asin, existing_fnsku, last_updated = existing
+                            listing_id, old_asin, old_upc, old_ean = existing
+                            new_asin = listing_data.get('asin')
+                            new_upc = listing_data.get('upc')
+                            new_ean = listing_data.get('ean')
                             
-                            # Record any changes from current values
-                            if asin and asin != existing_asin:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'ASIN',
-                                    'old_value': existing_asin,
-                                    'new_value': asin,
-                                    'file_id': file_id
-                                })
-                            
-                            if upc and upc != existing_upc:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'UPC',
-                                    'old_value': existing_upc,
-                                    'new_value': upc,
-                                    'file_id': file_id
-                                })
-                            
-                            if ean and ean != existing_ean:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'EAN',
-                                    'old_value': existing_ean,
-                                    'new_value': ean,
-                                    'file_id': file_id
-                                })
-                            
-                            if fnsku and fnsku != existing_fnsku:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'FNSKU',
-                                    'old_value': existing_fnsku,
-                                    'new_value': fnsku,
-                                    'file_id': file_id
-                                })
-                            
-                            # ALWAYS update the current values in product_identifiers
-                            # This ensures we always have the latest value
-                            update_fields = []
-                            update_values = []
-                            
-                            if asin:
-                                update_fields.append("asin = %s")
-                                update_values.append(asin)
-                            
-                            if upc:
-                                update_fields.append("upc = %s")
-                                update_values.append(upc)
+                            # Check if any identifiers have changed
+                            if ((old_asin is not None and new_asin is not None and old_asin != new_asin) or
+                                (old_upc is not None and new_upc is not None and old_upc != new_upc) or
+                                (old_ean is not None and new_ean is not None and old_ean != new_ean)):
                                 
-                            if ean:
-                                update_fields.append("ean = %s")
-                                update_values.append(ean)
-                                
-                            if fnsku:
-                                update_fields.append("fnsku = %s")
-                                update_values.append(fnsku)
-                            
-                            if update_fields:
-                                update_fields.append("last_updated = NOW()")
-                                update_query = f"""
-                                    UPDATE product_identifiers 
-                                    SET {', '.join(update_fields)} 
-                                    WHERE seller_sku = %s
-                                """
-                                cur.execute(update_query, update_values + [seller_sku])
-                        else:
-                            # New record - insert into product_identifiers
-                            cur.execute(
-                                """
-                                INSERT INTO product_identifiers 
-                                (seller_sku, upc, ean, asin, fnsku) 
-                                VALUES (%s, %s, %s, %s, %s)
-                                """,
-                                (seller_sku, upc, ean, asin, fnsku)
-                            )
-                            
-                            # Record as new identifiers if values exist
-                            if asin:
                                 identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'ASIN',
-                                    'old_value': None,
-                                    'new_value': asin,
-                                    'file_id': file_id
+                                    'listing_id': listing_id,
+                                    'sku': sku,
+                                    'old_asin': old_asin,
+                                    'new_asin': new_asin,
+                                    'old_upc': old_upc,
+                                    'new_upc': new_upc,
+                                    'old_ean': old_ean,
+                                    'new_ean': new_ean,
+                                    'changed_at': time.strftime('%Y-%m-%d %H:%M:%S')
                                 })
                             
-                            if upc:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'UPC',
-                                    'old_value': None,
-                                    'new_value': upc,
-                                    'file_id': file_id
-                                })
-                                
-                            if ean:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'EAN',
-                                    'old_value': None,
-                                    'new_value': ean,
-                                    'file_id': file_id
-                                })
-                                
-                            if fnsku:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'FNSKU',
-                                    'old_value': None,
-                                    'new_value': fnsku,
-                                    'file_id': file_id
-                                })
-                        
-                        # Check if the listing exists
-                        cur.execute(
-                            'SELECT id FROM listings WHERE "seller-sku" = %s',
-                            (seller_sku,)
-                        )
-                        existing_listing = cur.fetchone()
-                        
-                        if existing_listing:
                             # Update existing listing
-                            id_val = existing_listing[0]
-                            
-                            fields = []
+                            columns = []
                             values = []
-                            
                             for key, value in listing_data.items():
-                                fields.append(f'"{key}" = %s')
-                                values.append(value)
+                                if key != 'seller-sku':  # Skip SKU as it's the primary key
+                                    columns.append(key.replace('-', '_'))
+                                    values.append(value)
                             
-                            # Add file_id to the record
-                            fields.append('file_id = %s')
-                            values.append(file_id)
-                            
-                            # Add ID at the end
-                            values.append(id_val)
-                            
-                            sql = f"UPDATE listings SET {', '.join(fields)} WHERE id = %s"
-                            cur.execute(sql, values)
+                            if values:  # Only update if there are values to update
+                                # Create the SET part of the SQL query
+                                set_clause = ", ".join([f"{col} = %s" for col in columns])
+                                values.append(sku)  # Add SKU for WHERE clause
+                                
+                                update_query = f"UPDATE listings SET {set_clause}, updated_at = NOW() WHERE seller_sku = %s"
+                                cur.execute(update_query, values)
                         else:
                             # Insert new listing
-                            fields = [f'"{key}"' for key in listing_data.keys()]
-                            fields.append('file_id')
+                            columns = []
+                            values = []
+                            for key, value in listing_data.items():
+                                columns.append(key.replace('-', '_'))
+                                values.append(value)
                             
-                            placeholders = ["%s"] * len(fields)
-                            values = list(listing_data.values())
-                            values.append(file_id)
+                            # Add timestamps
+                            columns.extend(['created_at', 'updated_at'])
+                            values.extend([time.strftime('%Y-%m-%d %H:%M:%S'), time.strftime('%Y-%m-%d %H:%M:%S')])
                             
-                            sql = f"INSERT INTO listings ({', '.join(fields)}) VALUES ({', '.join(placeholders)}) RETURNING id"
-                            cur.execute(sql, values)
-                            listing_id = cur.fetchone()[0]
-                    
-                    processed_rows += len(chunk)
-                    
-                    # Update the progress
-                    update_progress(file_id, processed_rows, total_rows)
+                            # Create the INSERT SQL query
+                            placeholders = ", ".join(["%s"] * len(values))
+                            cols = ", ".join(columns)
+                            
+                            insert_query = f"INSERT INTO listings ({cols}) VALUES ({placeholders})"
+                            cur.execute(insert_query, values)
+                        
+                        processed_rows += 1
+                        
+                        # Update progress periodically
+                        if processed_rows % 100 == 0 or processed_rows == total_rows:
+                            update_progress(file_id, processed_rows, total_rows)
                 
-                # Insert all accumulated identifier changes for audit history
+                # Record any identifier changes
                 if identifier_changes:
                     for change in identifier_changes:
-                        # Find the listing_id if available
-                        listing_id = None
-                        if change['seller_sku']:
-                            cur.execute(
-                                'SELECT id FROM listings WHERE "seller-sku" = %s',
-                                (change['seller_sku'],)
-                            )
-                            result = cur.fetchone()
-                            if result:
-                                listing_id = result[0]
-                        
-                        # Insert the change record
                         cur.execute(
                             """
                             INSERT INTO identifier_changes 
-                            (listing_id, seller_sku, change_type, identifier_type, 
-                             old_value, new_value, file_id) 
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            (listing_id, sku, old_asin, new_asin, old_upc, new_upc, old_ean, new_ean, file_id, changed_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """,
                             (
-                                listing_id,
-                                change['seller_sku'],
-                                change['change_type'],
-                                change['identifier_type'],
-                                change['old_value'],
-                                change['new_value'],
-                                change['file_id']
+                                change['listing_id'], change['sku'], 
+                                change['old_asin'], change['new_asin'],
+                                change['old_upc'], change['new_upc'],
+                                change['old_ean'], change['new_ean'],
+                                file_id,
+                                change['changed_at']
                             )
                         )
         
-        # Update file status to "completed"
-        update_file_status(file_id, 'completed', {
-            'rows_processed': total_rows,
+        # Update file status to "processed"
+        update_file_status(file_id, 'processed', {
+            'total_rows': total_rows,
+            'processed_rows': processed_rows,
             'identifier_changes': len(identifier_changes)
         })
         
-        logger.info(f"Completed processing of report {file_id}: {total_rows} rows processed, {len(identifier_changes)} identifier changes")
-        
         return {
-            'status': 'success',
-            'message': f'Report processed successfully. {total_rows} records processed.',
+            'status': 'processed',
+            'message': f'Successfully processed {processed_rows} of {total_rows} rows',
             'identifier_changes': len(identifier_changes)
         }
         
     except Exception as e:
-        logger.error(f"Error in process_file_without_duplicates for {file_id}: {str(e)}")
+        logger.error(f"Error in process_file_without_duplicates for file {file_id}: {str(e)}")
+        
+        # Update file status to "error"
         update_file_status(file_id, 'error', {
-            'error': str(e),
-            'step': 'processing_no_duplicates'
+            'error': str(e)
         })
-        return {
-            'status': 'error',
-            'message': f'Error processing report: {str(e)}'
-        }
+        
+        # Re-raise the exception
+        raise
 
 def update_file_status(file_id, status, details=None):
     """Update the status of a file in the database"""
+    logger.info(f"Updating file {file_id} status to {status}")
+    
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 if details:
                     cur.execute(
-                        """
-                        UPDATE uploaded_files 
-                        SET status = %s, updated_at = NOW(), process_status_details = %s
-                        WHERE id = %s
-                        """,
+                        "UPDATE uploaded_files SET status = %s, processing_details = %s, updated_at = NOW() WHERE id = %s",
                         (status, json.dumps(details), file_id)
                     )
                 else:
                     cur.execute(
-                        """
-                        UPDATE uploaded_files 
-                        SET status = %s, updated_at = NOW()
-                        WHERE id = %s
-                        """,
+                        "UPDATE uploaded_files SET status = %s, updated_at = NOW() WHERE id = %s",
                         (status, file_id)
                     )
     except Exception as e:
         logger.error(f"Error updating file status: {str(e)}")
 
 def update_progress(file_id, processed_rows, total_rows):
-    """Update processing progress for a file"""
-    progress = round((processed_rows / total_rows) * 100) if total_rows > 0 else 0
+    """Update the progress of a file being processed"""
+    progress = int(100 * processed_rows / total_rows) if total_rows > 0 else 100
+    logger.info(f"File {file_id}: Processed {processed_rows}/{total_rows} rows ({progress}%)")
     update_file_status(file_id, 'processing', {
         'progress': progress,
-        'processed': processed_rows,
-        'total': total_rows
+        'processed_rows': processed_rows,
+        'total_rows': total_rows
     })
 
 @app.task(name='resolve_duplicates')
 def resolve_duplicates(issue_id, file_id):
-    """Apply duplicate resolutions and continue processing"""
+    """
+    Resolve duplicate SKUs in a file based on user selections
+    """
     try:
-        logger.info(f"Resolving duplicates for issue {issue_id}, file {file_id}")
+        logger.info(f"Resolving duplicates for issue {issue_id} (File ID: {file_id})")
         
+        # Get duplicate issue details
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Get the issue and resolutions
                 cur.execute(
-                    "SELECT duplicate_info, resolution_strategy FROM duplicate_sku_issues WHERE id = %s",
+                    "SELECT duplicate_info, resolutions FROM duplicate_sku_issues WHERE id = %s",
                     (issue_id,)
                 )
                 result = cur.fetchone()
+                
                 if not result:
-                    raise ValueError(f"Duplicate issue {issue_id} not found")
+                    logger.error(f"Duplicate issue {issue_id} not found")
+                    return {
+                        'status': 'error',
+                        'message': f'Duplicate issue {issue_id} not found'
+                    }
                 
-                duplicate_info, resolutions = result
-                
-                # Get the file path
+                duplicate_info = json.loads(result[0])
+                resolutions = json.loads(result[1]) if result[1] else {}
+        
+        # Check if resolutions are complete
+        if not resolutions:
+            logger.error(f"No resolutions provided for issue {issue_id}")
+            return {
+                'status': 'error',
+                'message': 'No resolutions provided'
+            }
+        
+        # Get the file path
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
                 cur.execute(
                     "SELECT file_path FROM uploaded_files WHERE id = %s",
                     (file_id,)
                 )
-                file_path = cur.fetchone()[0]
+                result = cur.fetchone()
                 
-                # Load the original file
-                df = pd.read_csv(file_path, sep='\t', encoding='utf-8')
-                df.columns = [col.strip() for col in df.columns]
+                if not result:
+                    logger.error(f"File {file_id} not found")
+                    return {
+                        'status': 'error',
+                        'message': f'File {file_id} not found'
+                    }
                 
-                # Apply resolutions for each SKU
-                resolved_df = apply_duplicate_resolutions(df, duplicate_info, resolutions)
-                
-                # Save resolved file
-                resolved_file_path = file_path.replace('.txt', '_resolved.txt')
-                resolved_df.to_csv(resolved_file_path, sep='\t', index=False)
-                
-                # Update file path and status
+                file_path = result[0]
+        
+        # Read the file
+        df = pd.read_csv(file_path, sep='\t', encoding='utf-8')
+        df.columns = [col.strip() for col in df.columns]
+        
+        # Apply resolutions
+        df = apply_duplicate_resolutions(df, duplicate_info, resolutions)
+        
+        # Update issue status
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
                 cur.execute(
-                    """
-                    UPDATE uploaded_files 
-                    SET file_path = %s, status = 'ready_to_process', 
-                        updated_at = NOW(), 
-                        process_status_details = jsonb_set(
-                            COALESCE(process_status_details, '{}'::jsonb), 
-                            '{duplicate_resolved}', 
-                            'true'::jsonb
-                        )
-                    WHERE id = %s
-                    """,
-                    (resolved_file_path, file_id)
+                    "UPDATE duplicate_sku_issues SET status = 'resolved', updated_at = NOW() WHERE id = %s",
+                    (issue_id,)
                 )
         
-        logger.info(f"Duplicates resolved, continuing with processing for file {file_id}")
-        
-        # Now trigger the normal processing with the resolved file
-        return process_report.delay(resolved_file_path, file_id)
+        # Process the file now that duplicates are resolved
+        return process_file_without_duplicates(df, file_id)
         
     except Exception as e:
-        logger.error(f"Error resolving duplicates for {file_id}: {str(e)}")
-        # Update file status to error
+        logger.error(f"Error resolving duplicates for issue {issue_id}: {str(e)}")
+        
+        # Update issue status to "error"
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE duplicate_sku_issues SET status = 'error', error = %s, updated_at = NOW() WHERE id = %s",
+                    (str(e), issue_id)
+                )
+        
+        # Update file status to "error"
         update_file_status(file_id, 'error', {
-            'error': str(e),
-            'step': 'duplicate_resolution'
+            'error': f'Error resolving duplicates: {str(e)}'
         })
-        return {
-            'status': 'error',
-            'message': str(e)
-        }
+        
+        # Re-raise the exception
+        raise
 
 def apply_duplicate_resolutions(df, duplicate_info, resolutions):
-    """Apply user's resolution choices to the dataframe"""
-    # Create a copy to work with
+    """Apply user-selected resolutions to duplicate SKUs"""
     resolved_df = df.copy()
     
-    for sku, strategy in resolutions.items():
+    # Track rows to remove
+    rows_to_drop = []
+    
+    # Apply resolutions for each SKU
+    for sku, resolution in resolutions.items():
         if sku not in duplicate_info:
-            continue  # Skip if SKU not in duplicate info
+            logger.warning(f"SKU {sku} not found in duplicate info")
+            continue
         
-        # Get all rows with this SKU
-        sku_mask = df['seller-sku'] == sku
-        sku_rows = df[sku_mask]
+        action = resolution.get('action')
+        selected_index = resolution.get('selected_index')
         
-        if strategy['resolution_type'] == 'keep_one':
-            # Keep only the specified row index
-            row_to_keep = strategy['row_index']
-            # Drop all rows with this SKU except the one to keep
-            drop_indices = sku_rows.index.tolist()
-            drop_indices.remove(row_to_keep)
-            resolved_df = resolved_df.drop(drop_indices)
-            
-        elif strategy['resolution_type'] == 'keep_newest':
-            # Keep only the last row (assuming this is the newest)
-            drop_indices = sku_rows.index.tolist()[:-1]
-            resolved_df = resolved_df.drop(drop_indices)
-            
-        elif strategy['resolution_type'] == 'merge':
-            # Create a merged row based on field selections
-            merged_row = {}
-            for field, row_index in strategy['field_selections'].items():
-                # Find the row with this index
-                source_row = df.loc[row_index]
-                merged_row[field] = source_row.get(field)
-            
-            # Update the first row with merged values
-            first_row_idx = sku_rows.index[0]
-            for field, value in merged_row.items():
-                resolved_df.at[first_row_idx, field] = value
-                
-            # Drop other rows
-            drop_indices = sku_rows.index.tolist()[1:]
-            resolved_df = resolved_df.drop(drop_indices)
-            
-        elif strategy['resolution_type'] == 'rename':
-            # Rename the SKU for specified rows
-            for rename_info in strategy['renames']:
-                row_idx = rename_info['row_index']
-                new_sku = rename_info['new_sku']
-                resolved_df.at[row_idx, 'seller-sku'] = new_sku
+        if action == 'keep_one' and selected_index is not None:
+            # Keep only the selected row, remove others
+            duplicate_rows = [item['row_index'] for item in duplicate_info[sku]]
+            rows_to_keep = [duplicate_rows[selected_index]]
+            rows_to_drop.extend([idx for idx in duplicate_rows if idx not in rows_to_keep])
+        
+        elif action == 'merge':
+            # Implement custom merge logic here if needed
+            # For now, just keep the first occurrence
+            duplicate_rows = [item['row_index'] for item in duplicate_info[sku]]
+            rows_to_keep = [duplicate_rows[0]]
+            rows_to_drop.extend([idx for idx in duplicate_rows if idx not in rows_to_keep])
+        
+        elif action == 'remove_all':
+            # Remove all occurrences of this SKU
+            duplicate_rows = [item['row_index'] for item in duplicate_info[sku]]
+            rows_to_drop.extend(duplicate_rows)
+    
+    # Remove the unwanted rows
+    resolved_df = resolved_df.drop(rows_to_drop)
     
     return resolved_df
 
@@ -683,311 +562,6 @@ def process_all_listings_report(file_path, file_id, user_id=None):
         
         # Re-raise the exception for Celery to handle
         raise
-
-def process_file_without_duplicates(df, file_id, user_id=None, report_type='default'):
-    """Process a file that has no duplicates or has been resolved"""
-    try:
-        # Ensure no duplicate SKUs in the input file by keeping only the first occurrence
-        df = df.drop_duplicates(subset=['seller-sku'], keep='first')
-        
-        # Process records in chunks
-        chunk_size = 1000
-        total_rows = len(df)
-        processed_rows = 0
-        identifier_changes = []
-        
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                for i in range(0, total_rows, chunk_size):
-                    chunk = df.iloc[i:i+chunk_size]
-                    
-                    # Process each listing in the chunk
-                    for _, row in chunk.iterrows():
-                        # Extract data from the row
-                        listing_data = {}
-                        for col in df.columns:
-                            # Convert column names with spaces to use hyphens (matching DB schema)
-                            db_col = col.strip().replace(' ', '-').lower()
-                            value = row[col]
-                            
-                            # Skip null values
-                            if pd.isna(value) or value == '':
-                                continue
-                                
-                            # Handle data type conversions
-                            if db_col in ['price']:
-                                try:
-                                    value = float(value)
-                                except (ValueError, TypeError):
-                                    value = None
-                            elif db_col in ['quantity', 'pending-quantity']:
-                                try:
-                                    value = int(value)
-                                except (ValueError, TypeError):
-                                    value = 0
-                            elif db_col in ['item-is-marketplace', 'will-ship-internationally', 
-                                           'expedited-shipping', 'zshop-boldface']:
-                                if isinstance(value, str):
-                                    value = value.lower() in ['y', 'yes', 'true']
-                                
-                            # Add to listing data
-                            if value is not None:
-                                listing_data[db_col] = value
-                        
-                        # Skip rows without SKU
-                        if 'seller-sku' not in listing_data:
-                            logger.warning(f"Skipping row without seller-sku: {listing_data}")
-                            continue
-                        
-                        seller_sku = listing_data['seller-sku']
-                        asin = listing_data.get('asin1') or listing_data.get('asin')
-                        
-                        # Determine product identifiers
-                        upc = None
-                        ean = None
-                        if 'product-id-type' in listing_data and 'product-id' in listing_data:
-                            if listing_data['product-id-type'] == '3':
-                                upc = listing_data['product-id']
-                            elif listing_data['product-id-type'] == '4':
-                                ean = listing_data['product-id']
-                        
-                        fnsku = listing_data.get('fnsku')
-                        
-                        # Check for existing product identifiers
-                        cur.execute(
-                            'SELECT * FROM product_identifiers WHERE seller_sku = %s',
-                            (seller_sku,)
-                        )
-                        existing = cur.fetchone()
-                        
-                        if existing:
-                            # Check for changes compared to current values
-                            id_val, existing_sku, existing_upc, existing_ean, existing_asin, existing_fnsku, last_updated = existing
-                            
-                            # Record any changes from current values
-                            if asin and asin != existing_asin:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'ASIN',
-                                    'old_value': existing_asin,
-                                    'new_value': asin,
-                                    'file_id': file_id
-                                })
-                            
-                            if upc and upc != existing_upc:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'UPC',
-                                    'old_value': existing_upc,
-                                    'new_value': upc,
-                                    'file_id': file_id
-                                })
-                            
-                            if ean and ean != existing_ean:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'EAN',
-                                    'old_value': existing_ean,
-                                    'new_value': ean,
-                                    'file_id': file_id
-                                })
-                            
-                            if fnsku and fnsku != existing_fnsku:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'modified',
-                                    'identifier_type': 'FNSKU',
-                                    'old_value': existing_fnsku,
-                                    'new_value': fnsku,
-                                    'file_id': file_id
-                                })
-                            
-                            # ALWAYS update the current values in product_identifiers
-                            # This ensures we always have the latest value
-                            update_fields = []
-                            update_values = []
-                            
-                            if asin:
-                                update_fields.append("asin = %s")
-                                update_values.append(asin)
-                            
-                            if upc:
-                                update_fields.append("upc = %s")
-                                update_values.append(upc)
-                                
-                            if ean:
-                                update_fields.append("ean = %s")
-                                update_values.append(ean)
-                                
-                            if fnsku:
-                                update_fields.append("fnsku = %s")
-                                update_values.append(fnsku)
-                            
-                            if update_fields:
-                                update_fields.append("last_updated = NOW()")
-                                update_query = f"""
-                                    UPDATE product_identifiers 
-                                    SET {', '.join(update_fields)} 
-                                    WHERE seller_sku = %s
-                                """
-                                cur.execute(update_query, update_values + [seller_sku])
-                        else:
-                            # New record - insert into product_identifiers
-                            cur.execute(
-                                """
-                                INSERT INTO product_identifiers 
-                                (seller_sku, upc, ean, asin, fnsku) 
-                                VALUES (%s, %s, %s, %s, %s)
-                                """,
-                                (seller_sku, upc, ean, asin, fnsku)
-                            )
-                            
-                            # Record as new identifiers if values exist
-                            if asin:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'ASIN',
-                                    'old_value': None,
-                                    'new_value': asin,
-                                    'file_id': file_id
-                                })
-                            
-                            if upc:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'UPC',
-                                    'old_value': None,
-                                    'new_value': upc,
-                                    'file_id': file_id
-                                })
-                                
-                            if ean:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'EAN',
-                                    'old_value': None,
-                                    'new_value': ean,
-                                    'file_id': file_id
-                                })
-                                
-                            if fnsku:
-                                identifier_changes.append({
-                                    'seller_sku': seller_sku,
-                                    'change_type': 'new',
-                                    'identifier_type': 'FNSKU',
-                                    'old_value': None,
-                                    'new_value': fnsku,
-                                    'file_id': file_id
-                                })
-                        
-                        # Check if the listing exists
-                        cur.execute(
-                            'SELECT id FROM listings WHERE "seller-sku" = %s',
-                            (seller_sku,)
-                        )
-                        existing_listing = cur.fetchone()
-                        
-                        if existing_listing:
-                            # Update existing listing
-                            id_val = existing_listing[0]
-                            
-                            fields = []
-                            values = []
-                            
-                            for key, value in listing_data.items():
-                                fields.append(f'"{key}" = %s')
-                                values.append(value)
-                            
-                            # Add file_id to the record
-                            fields.append('file_id = %s')
-                            values.append(file_id)
-                            
-                            # Add ID at the end
-                            values.append(id_val)
-                            
-                            sql = f"UPDATE listings SET {', '.join(fields)} WHERE id = %s"
-                            cur.execute(sql, values)
-                        else:
-                            # Insert new listing
-                            fields = [f'"{key}"' for key in listing_data.keys()]
-                            fields.append('file_id')
-                            
-                            placeholders = ["%s"] * len(fields)
-                            values = list(listing_data.values())
-                            values.append(file_id)
-                            
-                            sql = f"INSERT INTO listings ({', '.join(fields)}) VALUES ({', '.join(placeholders)}) RETURNING id"
-                            cur.execute(sql, values)
-                            listing_id = cur.fetchone()[0]
-                    
-                    processed_rows += len(chunk)
-                    
-                    # Update the progress
-                    update_progress(file_id, processed_rows, total_rows)
-                
-                # Insert all accumulated identifier changes for audit history
-                if identifier_changes:
-                    for change in identifier_changes:
-                        # Find the listing_id if available
-                        listing_id = None
-                        if change['seller_sku']:
-                            cur.execute(
-                                'SELECT id FROM listings WHERE "seller-sku" = %s',
-                                (change['seller_sku'],)
-                            )
-                            result = cur.fetchone()
-                            if result:
-                                listing_id = result[0]
-                        
-                        # Insert the change record
-                        cur.execute(
-                            """
-                            INSERT INTO identifier_changes 
-                            (listing_id, seller_sku, change_type, identifier_type, 
-                             old_value, new_value, file_id) 
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                            """,
-                            (
-                                listing_id,
-                                change['seller_sku'],
-                                change['change_type'],
-                                change['identifier_type'],
-                                change['old_value'],
-                                change['new_value'],
-                                change['file_id']
-                            )
-                        )
-        
-        # Update file status to "completed"
-        update_file_status(file_id, 'completed', {
-            'rows_processed': total_rows,
-            'identifier_changes': len(identifier_changes)
-        })
-        
-        logger.info(f"Completed processing of report {file_id}: {total_rows} rows processed, {len(identifier_changes)} identifier changes")
-        
-        return {
-            'status': 'success',
-            'message': f'Report processed successfully. {total_rows} records processed.',
-            'identifier_changes': len(identifier_changes)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in process_file_without_duplicates for {file_id}: {str(e)}")
-        update_file_status(file_id, 'error', {
-            'error': str(e),
-            'step': 'processing_no_duplicates'
-        })
-        return {
-            'status': 'error',
-            'message': f'Error processing report: {str(e)}'
-        }
 
 if __name__ == '__main__':
     logger.info("Worker starting up...")
