@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HotTable } from '@handsontable/react';
 import { registerAllModules } from 'handsontable/registry';
+import { CellChange, ChangeSource } from 'handsontable/common';
 import 'handsontable/dist/handsontable.full.css';
 import axios from 'axios';
 import styles from './InventoryTable.module.css';
@@ -17,6 +18,7 @@ interface InventoryItem {
   asin: string;
   ean: string;
   upc: string;
+  [key: string]: any; // Index signature to allow dynamic property access
 }
 
 export default function InventoryTable() {
@@ -54,15 +56,16 @@ export default function InventoryTable() {
   }, []);
 
   // Handle data changes
-  const handleChange = useCallback((changes: any[] | null) => {
+  const handleChange = useCallback((changes: CellChange[] | null, source: ChangeSource) => {
     if (!changes) return;
     
     // Create a new data array with the changes
     const newData = [...data];
     
-    changes.forEach(([row, prop, oldValue, newValue]) => {
+    changes.forEach((change) => {
+      const [row, prop, oldValue, newValue] = change;
       if (oldValue !== newValue) {
-        newData[row][prop as keyof InventoryItem] = newValue;
+        newData[row][prop.toString()] = newValue;
         
         // In a real app, you'd make an API call to update the data
         // Example:
