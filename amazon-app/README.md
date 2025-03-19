@@ -241,6 +241,29 @@ This application follows a microservices architecture pattern with:
 
 This architecture is containerized using Docker, allowing for easy deployment and scaling. The services communicate through well-defined APIs, following the project development rules for maximal diversification and isolation.
 
+### Messaging and Task Processing
+
+The application uses a message-based architecture for processing background tasks:
+
+1. **Message Format**: All tasks sent to the Celery worker must follow a specific format with required fields:
+   - `id`: A unique identifier for the task
+   - `task`: The name of the task to be executed (e.g., 'process_report')
+   - `args`: Array of positional arguments for the task
+   - `kwargs`: Object of keyword arguments for the task
+   - `properties`: Task metadata including:
+     - `delivery_mode`: Message persistence mode
+     - `correlation_id`: For tracking the task
+     - `delivery_tag`: Required by Kombu/Celery for message handling
+
+2. **Available Tasks**:
+   - `process_report`: Process standard inventory reports
+   - `process_all_listings_report`: Process Amazon All Listings Reports
+   - `resolve_duplicates`: Handle duplicate SKU resolution
+
+3. **Message Queue**: Redis is used as the message broker to store and deliver tasks to workers.
+
+For proper worker communication, every task message must include the `delivery_tag` property to avoid Celery worker crashes.
+
 ### Data Flow
 
 1. **File Upload Process**:
