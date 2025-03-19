@@ -84,7 +84,11 @@ export async function POST(request: NextRequest) {
         id: taskId,
         task: 'process_report',
         args: [filePath, fileId],
-        kwargs: {}
+        kwargs: {},
+        properties: {
+          delivery_mode: 2,  // persistent
+          correlation_id: taskId
+        }
       };
       
       // Add task to Celery queue
