@@ -38,6 +38,40 @@ const task = {
 docker compose restart worker
 ```
 
+### Error: `KeyError: 'exchange'`
+
+**Problem**: The Celery worker crashes with the following error:
+```
+KeyError: 'exchange'
+```
+
+**Cause**: The message format sent to Celery via Redis is missing the required `exchange` and `routing_key` properties.
+
+**Solution**: 
+1. Ensure all task messages include the `exchange` and `routing_key` properties:
+```typescript
+const task = {
+  id: taskId,
+  task: 'process_report',
+  args: [filePath, fileId],
+  kwargs: {},
+  exchange: 'celery',
+  routing_key: 'celery',
+  properties: {
+    delivery_mode: 2,
+    correlation_id: taskId,
+    delivery_tag: taskId
+  }
+};
+```
+
+2. For Celery workers, the default exchange and routing key should both be set to 'celery'.
+
+3. Restart the worker container after making changes:
+```bash
+docker compose restart worker
+```
+
 ### Warning: `pyarrow will become a required dependency of pandas`
 
 **Problem**: The worker logs show a warning about pyarrow dependency.
