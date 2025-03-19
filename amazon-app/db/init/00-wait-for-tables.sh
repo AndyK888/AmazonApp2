@@ -5,8 +5,18 @@ set -e
 PGUSER=${POSTGRES_USER:-postgres}
 PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
 PGDATABASE=${POSTGRES_DB:-amazon_inventory}
+PGHOST=${POSTGRES_HOST:-db}
 MAX_RETRIES=30
 RETRY_INTERVAL=5
+
+echo "Configuration:"
+echo "PGHOST=$PGHOST"
+echo "PGUSER=$PGUSER"
+echo "PGDATABASE=$PGDATABASE"
+echo "Password is ${PGPASSWORD:+set}"
+
+# Export password for psql commands
+export PGPASSWORD
 
 # Tables that must exist in the database
 REQUIRED_TABLES=(
@@ -21,7 +31,7 @@ REQUIRED_TABLES=(
 # Function to check if a table exists
 check_table_exists() {
   local table=$1
-  psql -U "$PGUSER" -d "$PGDATABASE" -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$table');" | grep -q 't'
+  psql -U "$PGUSER" -h "$PGHOST" -d "$PGDATABASE" -t -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = '$table');" | grep -q 't'
   return $?
 }
 
@@ -45,7 +55,7 @@ run_init_scripts_if_needed() {
   # Check if listings table already exists (to avoid running scripts on existing database)
   if ! check_table_exists "listings"; then
     echo "Running 01-init.sql..."
-    psql -U "$PGUSER" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/01-init.sql
+    psql -U "$PGUSER" -h "$PGHOST" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/01-init.sql
   else
     echo "Listings table already exists, skipping 01-init.sql"
   fi
@@ -53,7 +63,7 @@ run_init_scripts_if_needed() {
   # Check if uploaded_files table already exists
   if ! check_table_exists "uploaded_files"; then
     echo "Running 02-uploads-table.sql..."
-    psql -U "$PGUSER" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/02-uploads-table.sql
+    psql -U "$PGUSER" -h "$PGHOST" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/02-uploads-table.sql
   else
     echo "uploaded_files table already exists, skipping 02-uploads-table.sql"
   fi
@@ -61,7 +71,7 @@ run_init_scripts_if_needed() {
   # Check if identifier_changes table already exists
   if ! check_table_exists "identifier_changes"; then
     echo "Running 03-identifier-tracking.sql..."
-    psql -U "$PGUSER" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/03-identifier-tracking.sql
+    psql -U "$PGUSER" -h "$PGHOST" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/03-identifier-tracking.sql
   else
     echo "identifier_changes table already exists, skipping 03-identifier-tracking.sql"
   fi
@@ -69,7 +79,7 @@ run_init_scripts_if_needed() {
   # Check if duplicate_items table already exists
   if ! check_table_exists "duplicate_items"; then
     echo "Running 04-duplicates-tables.sql..."
-    psql -U "$PGUSER" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/04-duplicates-tables.sql
+    psql -U "$PGUSER" -h "$PGHOST" -d "$PGDATABASE" -f /docker-entrypoint-initdb.d/04-duplicates-tables.sql
   else
     echo "duplicate_items table already exists, skipping 04-duplicates-tables.sql"
   fi
@@ -77,7 +87,7 @@ run_init_scripts_if_needed() {
 
 # Main execution
 echo "Waiting for database to be ready..."
-until pg_isready -U "$PGUSER" -d "$PGDATABASE"; do
+until pg_isready -h "$PGHOST" -U "$PGUSER" -d "$PGDATABASE"; do
   echo "Database is unavailable - sleeping"
   sleep 2
 done
