@@ -26,6 +26,13 @@ A modern web application for managing Amazon inventory with file upload capabili
   - Sortable columns
   - Resizable rows and columns
   - Context menu for additional operations
+- **Inventory Management**
+  - Editable table for managing product inventory
+  - Real-time updates as changes are made
+  - Add new inventory items with a single click
+  - View total item count at a glance
+  - Simple, intuitive interface for all experience levels
+  - Context menu for advanced operations
 - **Duplicate SKU Resolution**
   - Detection of duplicate SKUs in uploaded files
   - Interactive interface for resolving duplicate entries
@@ -206,17 +213,19 @@ Features:
 
 ### InventoryTable
 
-Component that renders the interactive product data table.
+Component that renders the interactive editable inventory table with Handsontable.
 
 Features:
-- Column configuration for SKU, ASIN, FNSKU, EAN, UPC, and Quantity
+- Column configuration for Seller SKU, Quantity, ASIN, EAN, and UPC
 - Fully editable cells for all columns
 - Numeric input validation for Quantity field
 - Row headers for easy reference
 - Column headers with sorting capability
 - Context menu for additional operations
-- Automatic column width adjustment
-- Manual column and row resizing
+- Add new item functionality
+- Real-time data updates
+- Loading states and error handling
+- Responsive design with clean styling
 
 ## Architecture Overview
 
