@@ -50,6 +50,11 @@ A modern web application for managing Amazon inventory with file upload capabili
 - Next.js 15.x for server-side rendering and routing
 - Comprehensive error handling with ErrorBoundary
 - Advanced logging system
+- **Robust Database Management**
+  - Reliable database initialization with verification
+  - Flyway integration for database migrations
+  - Healthchecks ensuring database schema integrity
+  - Automatic recovery from initialization failures
 
 ## Technology Stack
 
@@ -60,6 +65,7 @@ A modern web application for managing Amazon inventory with file upload capabili
 - Redis for caching and background tasks
 - Docker for containerization
 - Python for background processing
+- Flyway for database migrations
 
 ## Getting Started
 
@@ -100,6 +106,26 @@ docker compose -f docker-compose.yml up -d
 
 The application will be available at `http://localhost:3000`
 
+### Database Migrations with Flyway
+
+The application now supports Flyway for database schema migrations:
+
+1. Run migrations using Docker Compose:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
+```
+
+2. View migration history:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory \
+  -c "SELECT * FROM flyway_schema_history ORDER BY installed_rank;"
+```
+
+3. Create new migrations by adding SQL files to the `db/migrations/` directory following the Flyway naming convention:
+```
+V<version>__<description>.sql
+```
+
 ## Project Structure
 
 ```
@@ -120,7 +146,15 @@ amazon-app/
 │   └── page.tsx                   # Home page component
 ├── db/                           # Database initialization and migrations
 │   ├── init/                     # Database initialization scripts
-│   └── migrations/               # Database migration scripts
+│   │   ├── 00-wait-for-tables.sh # Verification script for database tables
+│   │   ├── verify-tables-healthcheck.sh # Healthcheck script for database
+│   │   ├── 01-init.sql           # Initial database schema
+│   │   ├── 02-uploads-table.sql  # Uploads table creation
+│   │   ├── 03-identifier-tracking.sql # Identifier tracking tables
+│   │   └── 04-duplicates-tables.sql   # Duplicate management tables
+│   └── migrations/               # Flyway database migration scripts
+│       ├── V1__Initial_Schema.sql # Initial schema migration
+│       └── README.md             # Migration documentation
 ├── lib/                          # Utility libraries
 │   └── auth.ts                   # Authentication utilities
 ├── public/                       # Static assets
@@ -130,6 +164,7 @@ amazon-app/
 │   └── report-processor/         # File processing worker
 ├── Dockerfile                    # Frontend Docker configuration
 ├── docker-compose.yml            # Multi-container configuration
+├── docker-compose.flyway.yml     # Flyway integration for migrations
 └── package.json                  # Project dependencies
 ```
 

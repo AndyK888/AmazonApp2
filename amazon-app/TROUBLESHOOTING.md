@@ -106,23 +106,38 @@ pyarrow==14.0.0
 **Cause**: The database initialization scripts did not run properly during container startup.
 
 **Solution**:
-1. Check if the database container is initialized correctly:
+1. The new Docker Compose configuration includes a dedicated initialization container (`db-init`) that verifies all required tables exist:
 ```bash
-docker compose logs db
+docker compose down
+docker compose up -d
 ```
 
-2. Ensure the initialization scripts are in the correct location:
-```
-db/init/01-init.sql
-db/init/02-uploads-table.sql
-db/init/03-identifier-tracking.sql
-db/init/04-duplicates-tables.sql
+2. If the issue persists, you can manually trigger the verification process:
+```bash
+docker compose restart db-init
 ```
 
-3. If needed, reinitialize the database:
+3. To manually run the scripts:
 ```bash
-docker compose down -v  # Remove volumes
-docker compose up -d    # Recreate containers with fresh volumes
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/01-init.sql
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/02-uploads-table.sql
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/03-identifier-tracking.sql
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/04-duplicates-tables.sql
+```
+
+### Using Flyway for Database Migrations
+
+The application now supports Flyway for database migrations, providing a more robust way to manage schema changes:
+
+1. Existing migration files are in `db/migrations/`
+2. To run migrations:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
+```
+
+3. To verify applied migrations:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "SELECT * FROM flyway_schema_history ORDER BY installed_rank;"
 ```
 
 ## Docker-Related Issues
@@ -153,6 +168,27 @@ docker ps
 ```
 
 2. Stop conflicting containers or modify the port mapping in docker-compose.yml
+
+### Database initialization issues
+
+**Problem**: The database tables are not being created properly.
+
+**Solution**:
+1. Check the logs of the db-init container:
+```bash
+docker logs amazon-app-db-init-1
+```
+
+2. If initialization failed, force a recreation:
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+3. For persistent issues, use Flyway migrations:
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
+```
 
 ## File Upload Issues
 

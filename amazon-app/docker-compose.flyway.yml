@@ -1,0 +1,23 @@
+# Docker Compose file for Flyway migrations
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
+version: '3'
+
+services:
+  # Flyway migration service for database versioning and migration management
+  flyway:
+    image: flyway/flyway:latest
+    command: -url=jdbc:postgresql://db:5432/amazon_inventory -user=postgres -password=postgres -connectRetries=60 migrate
+    volumes:
+      - ./db/migrations:/flyway/sql
+      - ./db/init:/flyway/init
+    environment:
+      - FLYWAY_VALIDATE_MIGRATION_NAMING=true
+      - FLYWAY_BASELINE_ON_MIGRATE=true
+      - FLYWAY_BASELINE_VERSION=0
+      - FLYWAY_LOCATIONS=filesystem:/flyway/sql
+      - FLYWAY_PLACEHOLDER_REPLACEMENT=true
+    depends_on:
+      db:
+        condition: service_started
+    networks:
+      - app-network 

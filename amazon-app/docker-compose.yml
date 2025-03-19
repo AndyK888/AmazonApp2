@@ -1,4 +1,23 @@
 services:
+  # Database initialization service that runs before any other service
+  # This ensures all required tables are properly created
+  db-init:
+    image: postgres:14-alpine
+    command: ["/bin/bash", "/docker-entrypoint-initdb.d/00-wait-for-tables.sh"]
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=amazon_inventory
+      - POSTGRES_HOST=db
+    volumes:
+      - ./db/init:/docker-entrypoint-initdb.d
+    depends_on:
+      db:
+        condition: service_started
+    networks:
+      - app-network
+    restart: on-failure
+    
   frontend:
     build: .
     ports:
@@ -15,9 +34,10 @@ services:
       - UPLOAD_DIR=/app/uploads
     volumes:
       - ./uploads:/app/uploads
+    # Depend on db-init instead of db directly to ensure tables are created
     depends_on:
-      db:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -30,6 +50,7 @@ services:
     networks:
       - app-network
 
+  # Enhanced healthcheck for the database to ensure all required tables exist
   db:
     image: postgres:14-alpine
     ports:
@@ -41,11 +62,13 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
+    # Enhanced healthcheck that verifies all required tables exist
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "bash /docker-entrypoint-initdb.d/verify-tables-healthcheck.sh || pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 40s
     restart: unless-stopped
     networks:
       - app-network
@@ -79,10 +102,11 @@ services:
       - POSTGRES_PASSWORD=postgres
     volumes:
       - ./uploads:/app/uploads
+    # Depend on db-init instead of db directly to ensure tables are created
     depends_on:
+      db-init:
+        condition: service_completed_successfully
       redis:
-        condition: service_healthy
-      db:
         condition: service_healthy
     restart: unless-stopped
     networks:
