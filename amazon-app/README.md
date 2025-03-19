@@ -245,15 +245,11 @@ This architecture is containerized using Docker, allowing for easy deployment an
 
 The application uses a message-based architecture for processing background tasks:
 
-1. **Message Format**: All tasks sent to the Celery worker must follow a specific format with required fields:
+1. **Message Format**: All tasks sent to the worker must follow a specific format with required fields:
    - `id`: A unique identifier for the task
    - `task`: The name of the task to be executed (e.g., 'process_report')
    - `args`: Array of positional arguments for the task
    - `kwargs`: Object of keyword arguments for the task
-   - `properties`: Task metadata including:
-     - `delivery_mode`: Message persistence mode
-     - `correlation_id`: For tracking the task
-     - `delivery_tag`: Required by Kombu/Celery for message handling
 
 2. **Available Tasks**:
    - `process_report`: Process standard inventory reports
@@ -262,7 +258,14 @@ The application uses a message-based architecture for processing background task
 
 3. **Message Queue**: Redis is used as the message broker to store and deliver tasks to workers.
 
-For proper worker communication, every task message must include the `delivery_tag` property to avoid Celery worker crashes.
+4. **Custom Redis-based Worker**: The application uses a standalone worker implementation that directly processes tasks from Redis instead of relying on Celery:
+   - Direct Redis queue polling for improved reliability
+   - Custom task deserialization and execution
+   - Robust error handling with detailed logging
+   - Automatic recovery and restart capabilities
+   - Pending task detection and processing on startup
+
+The worker implementation ensures reliable processing of background tasks even in the presence of connection issues or message format discrepancies.
 
 ### Data Flow
 

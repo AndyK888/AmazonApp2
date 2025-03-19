@@ -17,14 +17,16 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-logger = logging.getLogger('report_processor')
+logger = logging.getLogger('standalone_worker')
 
 # Log worker startup
-logger.info("Worker starting up with custom Redis processor...")
+logger.info("Standalone worker starting up...")
 
 # Redis connection
 def get_redis_client():
-    return redis.Redis.from_url(os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0'))
+    redis_url = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+    logger.info(f"Connecting to Redis at: {redis_url}")
+    return redis.Redis.from_url(redis_url)
 
 # Database connection
 def get_db_connection():
@@ -587,7 +589,7 @@ def process_redis_queue():
                 task_data = redis_client.brpop('celery', timeout=5)
                 
                 if not task_data:
-                    logger.debug("No tasks in Redis queue, waiting...")
+                    logger.info("No tasks in Redis queue, waiting...")
                     time.sleep(0.1)  # Sleep briefly to avoid high CPU usage in idle periods
                     continue
                     
@@ -608,12 +610,14 @@ def process_redis_queue():
                     result = process_report(*args, **kwargs)
                     logger.info(f"process_report result: {result}")
                     
-                elif task_name == 'process_all_listings_report':
+                elif task_name.endswith('process_all_listings_report'):
+                    # Handle both with and without module name prefix
                     logger.info(f"Calling process_all_listings_report with args: {args}")
                     result = process_all_listings_report(*args, **kwargs)
                     logger.info(f"process_all_listings_report result: {result}")
                     
-                elif task_name == 'resolve_duplicates':
+                elif task_name.endswith('resolve_duplicates'):
+                    # Handle both with and without module name prefix
                     logger.info(f"Calling resolve_duplicates with args: {args}")
                     result = resolve_duplicates(*args, **kwargs)
                     logger.info(f"resolve_duplicates result: {result}")
@@ -663,7 +667,7 @@ def check_pending_tasks():
 # Main execution
 if __name__ == '__main__':
     try:
-        logger.info("Worker starting up in standalone mode...")
+        logger.info("Standalone worker starting up...")
         
         # Check for pending tasks first
         check_pending_tasks()

@@ -15,4 +15,4 @@ COPY . .
 RUN mkdir -p /app/uploads
 
 # Run the worker
-CMD ["python", "worker.py"] 
+CMD ["python", "standalone_worker.py"] 
