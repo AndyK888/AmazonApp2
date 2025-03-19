@@ -125,6 +125,140 @@ docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-
 docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/04-duplicates-tables.sql
 ```
 
+### Error: Database Schema Healthcheck Failing for 'listings' Table 
+
+**Problem**: The database healthcheck script fails validation for the `listings` table, incorrectly reporting missing columns even when the database schema is correct.
+
+**Cause**: The healthcheck script (`verify-tables-healthcheck.sh`) was using incorrect column names that didn't match the actual database schema. Specifically, it was looking for `seller_sku`, `asin`, and `title` columns, while the actual schema uses `seller-sku`, `asin1`, and `item-name`.
+
+**Solution**:
+1. The script has been updated to check for the correct column names:
+```bash
+# Correct column names in the healthcheck script
+TABLE_COLUMNS["listings"]="id,seller-sku,asin1,item-name,price,quantity,status,fulfillment-channel"
+```
+
+2. If you encounter similar validation issues with other tables, verify the actual column names in the database:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "\d listings"
+# Compare the output with the column names in verify-tables-healthcheck.sh
+```
+
+3. To manually update the healthcheck script:
+```bash
+# Edit the file
+vi amazon-app/db/init/verify-tables-healthcheck.sh
+
+# Find the TABLE_COLUMNS declaration and update it with correct column names
+# Then restart the db-init service
+docker compose restart db-init
+```
+
+### Verifying Database Tables and Schemas
+
+**Problem**: Need to verify if database tables are properly created with the correct schema.
+
+**Solution**:
+1. Use the built-in verification script to check all required tables:
+```bash
+docker exec -it amazon-app-db-1 bash /docker-entrypoint-initdb.d/verify-tables-healthcheck.sh
+```
+
+2. To check a specific table structure:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "\d listings"
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "\d uploaded_files"
+```
+
+3. To check the contents of a table:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "SELECT COUNT(*) FROM listings;"
+```
+
+4. To verify specific columns exist:
+```bash
+docker exec -it amazon-app-db-1 psql -U postgres -d amazon_inventory -c "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'listings';"
+```
+
+### Manually Executing Database Initialization Scripts
+
+**Problem**: Need to manually initialize or reset the database.
+
+**Solution**:
+1. To completely reset the database (WARNING: This will delete all data):
+```bash
+docker compose down -v   # This removes volumes, including the database
+docker compose up -d     # Start fresh
+```
+
+2. To manually execute scripts in order without losing data:
+```bash
+# First, connect to the database container
+docker exec -it amazon-app-db-1 bash
+
+# Once inside the container, run the scripts in order
+psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/01-init.sql
+psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/02-uploads-table.sql
+psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/03-identifier-tracking.sql
+psql -U postgres -d amazon_inventory -f /docker-entrypoint-initdb.d/04-duplicates-tables.sql
+```
+
+3. To run the automatic initialization and verification process:
+```bash
+docker exec -it amazon-app-db-1 bash /docker-entrypoint-initdb.d/00-wait-for-tables.sh
+```
+
+### Ensuring Database Tables Are Created During Container Startup
+
+**Problem**: Tables are not being created properly during container startup.
+
+**Solution**:
+1. The application uses a dedicated `db-init` service that runs before other services and ensures all tables exist:
+```yaml
+# This is already configured in docker-compose.yml
+db-init:
+  image: postgres:14-alpine
+  command: ["/bin/bash", "/docker-entrypoint-initdb.d/00-wait-for-tables.sh"]
+  environment:
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_USER=postgres
+    - POSTGRES_DB=amazon_inventory
+    - POSTGRES_HOST=db
+  volumes:
+    - ./db/init:/docker-entrypoint-initdb.d
+  depends_on:
+    db:
+      condition: service_started
+```
+
+2. To troubleshoot container startup issues:
+   - Check logs of the db-init container:
+   ```bash
+   docker logs amazon-app-db-init-1
+   ```
+   
+   - Verify the initialization scripts exist in the correct location:
+   ```bash
+   docker exec -it amazon-app-db-1 ls -la /docker-entrypoint-initdb.d/
+   ```
+   
+   - Check if scripts have execution permissions:
+   ```bash
+   docker exec -it amazon-app-db-1 chmod +x /docker-entrypoint-initdb.d/*.sh
+   ```
+
+3. If automatic initialization continues to fail, you can force a manual verification and initialization:
+```bash
+docker compose restart db-init
+```
+
+4. For the most persistent issues, try a clean rebuild:
+```bash
+docker compose down -v
+docker compose build --no-cache
+docker compose up -d
+```
+
 ### Using Flyway for Database Migrations
 
 The application now supports Flyway for database migrations, providing a more robust way to manage schema changes:

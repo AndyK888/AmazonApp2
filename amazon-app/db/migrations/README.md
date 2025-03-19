@@ -48,3 +48,7 @@ docker exec amazon-app-db-1 psql -U postgres -d amazon_inventory -c "SELECT * FR
 - Use `IF NOT EXISTS` clauses for creating objects
 - Database schema is versioned and tracked in the `flyway_schema_history` table
 - Avoid modifying or renaming existing migration files 
+- Ensure column names in validation scripts match actual database schema
+  - The `listings` table uses hyphenated column names (e.g., `seller-sku`, `item-name`)
+  - Validation scripts like `verify-tables-healthcheck.sh` must use these exact names
+  - If validation failures occur, verify the actual column names using `\d listings` in psql 

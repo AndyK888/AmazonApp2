@@ -55,6 +55,7 @@ A modern web application for managing Amazon inventory with file upload capabili
   - Flyway integration for database migrations
   - Healthchecks ensuring database schema integrity
   - Automatic recovery from initialization failures
+  - Schema validation using the correct column naming format (e.g., `seller-sku`, `asin1`)
 
 ## Technology Stack
 
