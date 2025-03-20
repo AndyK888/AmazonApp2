@@ -77,7 +77,7 @@ def process_report(file_path, file_id, user_id=None):
                     # Extract key fields for comparison
                     duplicate_info[sku].append({
                         'row_index': row.name,
-                        'asin': row.get('asin1') or row.get('asin'),
+                        'asin': row.get('asin1'),
                         'upc': row.get('product-id') if row.get('product-id-type') == '3' else None,
                         'ean': row.get('product-id') if row.get('product-id-type') == '4' else None,
                         'fnsku': row.get('fnsku'),
@@ -202,7 +202,7 @@ def process_file_without_duplicates(df, file_id, user_id=None, report_type='defa
                         # Check if this SKU already exists in the database
                         sku = listing_data['seller-sku']
                         cur.execute(
-                            "SELECT id, asin, upc, ean FROM listings WHERE seller_sku = %s",
+                            """SELECT id, asin1, "product-id", "product-id" FROM listings WHERE "seller-sku" = %s""",
                             (sku,)
                         )
                         existing = cur.fetchone()
@@ -210,9 +210,9 @@ def process_file_without_duplicates(df, file_id, user_id=None, report_type='defa
                         # Track identifier changes if this is an update
                         if existing:
                             listing_id, old_asin, old_upc, old_ean = existing
-                            new_asin = listing_data.get('asin')
-                            new_upc = listing_data.get('upc')
-                            new_ean = listing_data.get('ean')
+                            new_asin = listing_data.get('asin1')
+                            new_upc = listing_data.get('product-id')
+                            new_ean = listing_data.get('product-id')
                             
                             # Check if any identifiers have changed
                             if ((old_asin is not None and new_asin is not None and old_asin != new_asin) or
@@ -236,7 +236,7 @@ def process_file_without_duplicates(df, file_id, user_id=None, report_type='defa
                             values = []
                             for key, value in listing_data.items():
                                 if key != 'seller-sku':  # Skip SKU as it's the primary key
-                                    columns.append(key.replace('-', '_'))
+                                    columns.append(f'"{key}"')  # Keep original column name with quotes
                                     values.append(value)
                             
                             if values:  # Only update if there are values to update
@@ -244,18 +244,18 @@ def process_file_without_duplicates(df, file_id, user_id=None, report_type='defa
                                 set_clause = ", ".join([f"{col} = %s" for col in columns])
                                 values.append(sku)  # Add SKU for WHERE clause
                                 
-                                update_query = f"UPDATE listings SET {set_clause}, updated_at = NOW() WHERE seller_sku = %s"
+                                update_query = f'UPDATE listings SET {set_clause}, updated_at = NOW() WHERE "seller-sku" = %s'
                                 cur.execute(update_query, values)
                         else:
                             # Insert new listing
                             columns = []
                             values = []
                             for key, value in listing_data.items():
-                                columns.append(key.replace('-', '_'))
+                                columns.append(f'"{key}"')  # Keep original column name with quotes
                                 values.append(value)
                             
                             # Add timestamps
-                            columns.extend(['created_at', 'updated_at'])
+                            columns.extend(['"created_at"', '"updated_at"'])
                             values.extend([time.strftime('%Y-%m-%d %H:%M:%S'), time.strftime('%Y-%m-%d %H:%M:%S')])
                             
                             # Create the INSERT SQL query
@@ -268,7 +268,7 @@ def process_file_without_duplicates(df, file_id, user_id=None, report_type='defa
                         processed_rows += 1
                         
                         # Update progress periodically
-                        if processed_rows % 100 == 0 or processed_rows == total_rows:
+                        if processed_rows % 25 == 0 or processed_rows == total_rows:
                             update_progress(file_id, processed_rows, total_rows)
                 
                 # Record any identifier changes
@@ -325,12 +325,21 @@ def update_file_status(file_id, status, details=None):
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                if details:
+                # First check if process_status_details column exists
+                cur.execute("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'uploaded_files' AND column_name = 'process_status_details'
+                """)
+                has_details_column = cur.fetchone() is not None
+                
+                if details and has_details_column:
                     cur.execute(
-                        "UPDATE uploaded_files SET status = %s, processing_details = %s, updated_at = NOW() WHERE id = %s",
+                        "UPDATE uploaded_files SET status = %s, process_status_details = %s, updated_at = NOW() WHERE id = %s",
                         (status, json.dumps(details), file_id)
                     )
                 else:
+                    # If the column doesn't exist or no details provided, update only the status
                     cur.execute(
                         "UPDATE uploaded_files SET status = %s, updated_at = NOW() WHERE id = %s",
                         (status, file_id)
@@ -342,11 +351,20 @@ def update_progress(file_id, processed_rows, total_rows):
     """Update the progress of a file being processed"""
     progress = int(100 * processed_rows / total_rows) if total_rows > 0 else 100
     logger.info(f"File {file_id}: Processed {processed_rows}/{total_rows} rows ({progress}%)")
-    update_file_status(file_id, 'processing', {
-        'progress': progress,
-        'processed_rows': processed_rows,
-        'total_rows': total_rows
-    })
+    
+    # Update the file status in the database with a dedicated connection to ensure immediate commit
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE uploaded_files SET processed_rows = %s, updated_at = NOW() WHERE id = %s",
+            (processed_rows, file_id)
+        )
+        conn.commit()  # Explicitly commit the transaction
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Error updating progress for file {file_id}: {e}")
 
 def resolve_duplicates(issue_id, file_id):
     """
@@ -518,7 +536,7 @@ def process_all_listings_report(file_path, file_id, user_id=None):
                     # Extract key fields for comparison
                     duplicate_info[sku].append({
                         'row_index': row.name,
-                        'asin': row.get('asin1') or row.get('asin'),
+                        'asin': row.get('asin1'),
                         'upc': row.get('product-id') if row.get('product-id-type') == '3' else None,
                         'ean': row.get('product-id') if row.get('product-id-type') == '4' else None,
                         'fnsku': row.get('fnsku'),

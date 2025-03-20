@@ -75,7 +75,7 @@ def process_report(file_path, file_id, user_id=None):
                     # Extract key fields for comparison
                     duplicate_info[sku].append({
                         'row_index': row.name,
-                        'asin': row.get('asin1') or row.get('asin'),
+                        'asin': row.get('asin1'),
                         'upc': row.get('product-id') if row.get('product-id-type') == '3' else None,
                         'ean': row.get('product-id') if row.get('product-id-type') == '4' else None,
                         'fnsku': row.get('fnsku'),
@@ -516,7 +516,7 @@ def process_all_listings_report(file_path, file_id, user_id=None):
                     # Extract key fields for comparison
                     duplicate_info[sku].append({
                         'row_index': row.name,
-                        'asin': row.get('asin1') or row.get('asin'),
+                        'asin': row.get('asin1'),
                         'upc': row.get('product-id') if row.get('product-id-type') == '3' else None,
                         'ean': row.get('product-id') if row.get('product-id-type') == '4' else None,
                         'fnsku': row.get('fnsku'),
