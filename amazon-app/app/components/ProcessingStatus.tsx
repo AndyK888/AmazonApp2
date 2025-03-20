@@ -77,12 +77,12 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
     // Initial fetch
     fetchStatus();
 
-    // Poll for updates every 2 seconds if the file is still processing
+    // Poll for updates every 1 second if the file is still processing
     const intervalId = setInterval(() => {
       if (status?.status === 'pending' || status?.status === 'processing') {
         fetchStatus();
       }
-    }, 2000);
+    }, 1000);
 
     return () => clearInterval(intervalId);
   }, [fileId, status?.status, onComplete, statusEndpoint]);

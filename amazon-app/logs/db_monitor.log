@@ -1,0 +1,28 @@
+2025-03-20 18:39:50,685 - db_monitor - INFO - Performing comprehensive database health check
+2025-03-20 18:39:50,731 - db_monitor - ERROR - Health check failed: connection to server at "db" (172.19.0.3), port 5432 failed: FATAL:  the database system is starting up
+
+2025-03-20 18:39:50,752 - db_monitor - ERROR - Traceback (most recent call last):
+  File "/app/ensure_db_setup.py", line 609, in perform_database_health_check
+    conn = psycopg2.connect(
+           ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: connection to server at "db" (172.19.0.3), port 5432 failed: FATAL:  the database system is starting up
+
+
+2025-03-20 18:39:50,753 - db_monitor - INFO - Health check completed in 0.07 seconds with status: critical
+2025-03-20 18:44:51,664 - db_monitor - INFO - Performing comprehensive database health check
+2025-03-20 18:44:51,701 - db_monitor - ERROR - Health check failed: could not translate host name "db" to address: Name or service not known
+
+2025-03-20 18:44:51,703 - db_monitor - ERROR - Traceback (most recent call last):
+  File "/app/ensure_db_setup.py", line 609, in perform_database_health_check
+    conn = psycopg2.connect(
+           ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.OperationalError: could not translate host name "db" to address: Name or service not known
+
+
+2025-03-20 18:44:51,703 - db_monitor - INFO - Health check completed in 0.04 seconds with status: critical

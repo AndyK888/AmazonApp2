@@ -21,6 +21,11 @@ export default function HomePage() {
           <p>Upload and view your Amazon listings report</p>
         </Link>
         
+        <Link href="/amazon-fulfilled-inventory" className={styles['feature-card']}>
+          <h2>Amazon Fulfilled Inventory</h2>
+          <p>View your Amazon-fulfilled inventory data</p>
+        </Link>
+        
         <Link href="/settings" className={styles['feature-card']}>
           <h2>Settings</h2>
           <p>Configure your account and preferences</p>

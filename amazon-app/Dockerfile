@@ -24,12 +24,14 @@ COPY public ./public
 COPY lib ./lib
 COPY types ./types
 
-# Install missing TypeScript types with cache mount
+# Install all needed dependencies
 RUN --mount=type=cache,target=/root/.npm \
-    npm install --save-dev @types/papaparse
+    npm install --save-dev @types/papaparse && \
+    npm install axios @handsontable/react && \
+    npm install -g next 
 
-# Build the application
-RUN npm run build || next build
+# Build the application - use the build script from package.json
+RUN next build
 
 # Stage 3: Runner - final lightweight image
 FROM node:20-alpine AS runner
