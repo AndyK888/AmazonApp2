@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 # Stage 1: Dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
@@ -5,8 +6,9 @@ WORKDIR /app
 # Copy only package files for better layer caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies (including dev dependencies for TypeScript types)
-RUN npm ci
+# Use cache mount to speed up npm installation
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Stage 2: Builder
 FROM node:20-alpine AS builder
@@ -14,23 +16,28 @@ WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
 
-# Install missing TypeScript types
-RUN npm install --save-dev @types/papaparse
+# Copy only necessary files for building
+COPY next.config.js tsconfig.json ./
+COPY app ./app
+COPY public ./public
+COPY lib ./lib
+COPY types ./types
 
-# Make sure we have the latest changes for tab-delimited file parsing
-RUN echo "Building with support for All_Listings_Report.txt format"
+# Install missing TypeScript types with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --save-dev @types/papaparse
 
 # Build the application
-RUN npm run build
+RUN npm run build || next build
 
 # Stage 3: Runner - final lightweight image
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Install dependencies for production
-RUN npm install -g next && \
+# Install only production dependencies
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g next && \
     apk --no-cache add curl
 
 # Copy necessary files from builder stage
@@ -40,11 +47,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 
-# Don't copy the All_Listings_Report.txt file in the Docker build
-# Users will upload it through the app interface
-
 # Copy database initialization scripts
-COPY --from=builder /app/db/init /app/db/init
+COPY db/init /app/db/init
 
 # Expose port 3000
 EXPOSE 3000

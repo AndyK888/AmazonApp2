@@ -1,3 +1,6 @@
+# Enable BuildKit by setting DOCKER_BUILDKIT=1 and COMPOSE_DOCKER_CLI_BUILD=1 environment variables
+# before running docker-compose commands
+
 services:
   # Database initialization service that runs before any other service
   # This ensures all required tables are properly created
@@ -19,7 +22,14 @@ services:
     restart: on-failure
     
   frontend:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1  # Enable inline cache
+      cache_from:
+        - amazon-app-frontend:latest  # Use cache from previous builds
+    image: amazon-app-frontend:latest  # Tag for caching
     ports:
       - "3000:3000"
     environment:
@@ -92,6 +102,11 @@ services:
     build:
       context: ./workers/report-processor
       dockerfile: Dockerfile
+      args:
+        - BUILDKIT_INLINE_CACHE=1  # Enable inline cache
+      cache_from:
+        - amazon-app-worker:latest  # Use cache from previous builds
+    image: amazon-app-worker:latest  # Tag for caching
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0

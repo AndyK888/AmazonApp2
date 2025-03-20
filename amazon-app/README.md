@@ -113,11 +113,18 @@ The application will be available at `http://localhost:3000`
 
 1. Build and run the containers:
 ```bash
+# Standard build
 docker compose -f docker-compose.yml build
 docker compose -f docker-compose.yml up -d
+
+# Optimized build (recommended)
+./scripts/build-optimized.sh
+docker compose up -d
 ```
 
 The application will be available at `http://localhost:3000`
+
+For detailed information about Docker build optimizations, see the [Docker Optimization Guide](docs/DOCKER_OPTIMIZATION.md).
 
 ### Database Migrations with Flyway
 
