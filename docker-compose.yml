@@ -1,0 +1,150 @@
+version: '3'
+
+services:
+  # Main database service
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=amazon_inventory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./amazon-app/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - app-network
+    container_name: postgres
+
+  # Redis service for caching and job queues
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - redis_data:/data
+    container_name: redis
+
+  # Main frontend application
+  frontend:
+    build:
+      context: ./amazon-app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/amazon_inventory
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=amazon_inventory
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379
+      - UPLOAD_DIR=/app/uploads
+      - ALL_LISTINGS_REPORT_SERVICE_URL=http://all-listing-report-service:5000
+      - AMAZON_FULFILLED_INVENTORY_API_URL=http://amazon-fulfilled-inventory-service:5000
+    volumes:
+      - ./amazon-app/uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Background worker for the main application
+  worker:
+    build:
+      context: ./amazon-app/workers/report-processor
+      dockerfile: Dockerfile
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=amazon_inventory
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./amazon-app/uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # All Listings Report microservice
+  all-listing-report-service:
+    build:
+      context: ./all-listing-report-service
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5000"  # Map to a different host port to avoid conflicts
+    environment:
+      - APP_DATABASE_HOST=postgres
+      - APP_DATABASE_PORT=5432
+      - APP_DATABASE_NAME=amazon_inventory
+      - APP_DATABASE_USER=postgres
+      - APP_DATABASE_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - ./all-listing-report-service/uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Amazon Fulfilled Inventory microservice
+  amazon-fulfilled-inventory-service:
+    build:
+      context: ./amazon-fulfilled-inventory-service
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5000"  # Map to a different host port to avoid conflicts
+    environment:
+      - APP_DATABASE_HOST=postgres
+      - APP_DATABASE_PORT=5432
+      - APP_DATABASE_NAME=amazon_inventory
+      - APP_DATABASE_USER=postgres
+      - APP_DATABASE_PASSWORD=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOAD_DIR=/app/uploads
+    volumes:
+      - ./amazon-fulfilled-inventory-service/uploads:/app/uploads
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge 
