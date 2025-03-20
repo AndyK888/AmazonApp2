@@ -2,6 +2,18 @@
 
 A modern web application for managing Amazon inventory with file upload capabilities and a dynamic table interface using a microservices architecture.
 
+## Architecture Documentation
+
+For detailed information about the system architecture, component dependencies, change management workflow, and rollback procedures, please see the [Architecture Documentation](docs/ARCHITECTURE.md).
+
+## Change Management
+
+Before making changes to the system:
+1. Follow the pre-change checklist in the [Architecture Documentation](docs/ARCHITECTURE.md)
+2. Create backups of critical configuration files
+3. Test changes incrementally
+4. Document all changes in the [Changelog](docs/CHANGELOG.md)
+
 ## Features
 
 - **All Listing Report**
