@@ -47,6 +47,49 @@ export default function AllListingsReportPage() {
 
   const [totalActiveCount, setTotalActiveCount] = useState<number>(0);
 
+  // Add safe styles handling
+  const safeStyles = {
+    'all-listings-container': styles?.['all-listings-container'] || 'all-listings-container',
+    'error-message': styles?.['error-message'] || 'error-message',
+    'filters-container': styles?.['filters-container'] || 'filters-container',
+    'search-container': styles?.['search-container'] || 'search-container',
+    'search-input': styles?.['search-input'] || 'search-input',
+    'search-button': styles?.['search-button'] || 'search-button',
+    'filter-container': styles?.['filter-container'] || 'filter-container',
+    'filter-select': styles?.['filter-select'] || 'filter-select',
+    'table-container': styles?.['table-container'] || 'table-container',
+    'listings-table': styles?.['listings-table'] || 'listings-table',
+    'column-selector': styles?.['column-selector'] || 'column-selector',
+    'column-selector-button': styles?.['column-selector-button'] || 'column-selector-button',
+    'column-selector-dropdown': styles?.['column-selector-dropdown'] || 'column-selector-dropdown',
+    'column-item': styles?.['column-item'] || 'column-item',
+    'pagination': styles?.['pagination'] || 'pagination',
+    'page-info': styles?.['page-info'] || 'page-info',
+    'page-buttons': styles?.['page-buttons'] || 'page-buttons',
+    'page-button': styles?.['page-button'] || 'page-button',
+    'active-page': styles?.['active-page'] || 'active-page',
+    'listing-count': styles?.['listing-count'] || 'listing-count',
+    
+    // Add missing properties
+    'loading': styles?.['loading'] || 'loading',
+    'listings-table-container': styles?.['listings-table-container'] || 'listings-table-container',
+    'column-selector-controls': styles?.['column-selector-controls'] || 'column-selector-controls',
+    'column-selector-header': styles?.['column-selector-header'] || 'column-selector-header',
+    'column-selector-options': styles?.['column-selector-options'] || 'column-selector-options',
+    'column-option': styles?.['column-option'] || 'column-option',
+    'results-count': styles?.['results-count'] || 'results-count',
+    'listings-table-wrapper': styles?.['listings-table-wrapper'] || 'listings-table-wrapper',
+    'status-badge': styles?.['status-badge'] || 'status-badge',
+    'pagination-button': styles?.['pagination-button'] || 'pagination-button',
+    'pagination-active': styles?.['pagination-active'] || 'pagination-active',
+    'no-listings': styles?.['no-listings'] || 'no-listings',
+    // Handle dynamic status classes
+    'status-active': styles?.['status-active'] || 'status-active',
+    'status-inactive': styles?.['status-inactive'] || 'status-inactive',
+    'status-incomplete': styles?.['status-incomplete'] || 'status-incomplete',
+    'status-error': styles?.['status-error'] || 'status-error',
+  };
+
   useEffect(() => {
     // Fetch distinct fulfillment channels for dropdown
     const fetchFulfillmentChannels = async () => {
@@ -224,7 +267,7 @@ export default function AllListingsReportPage() {
     : 'No listings found';
 
   return (
-    <div className={styles['all-listings-container']}>
+    <div className={safeStyles['all-listings-container']}>
       <h1>All Listings Report</h1>
       
       <FileUploader 
@@ -235,34 +278,34 @@ export default function AllListingsReportPage() {
       />
       
       {error && (
-        <div className={styles['error-message']}>
+        <div className={safeStyles['error-message']}>
           <p>{error}</p>
           <button onClick={() => setError(null)}>Dismiss</button>
         </div>
       )}
       
       {/* Filters and Search */}
-      <div className={styles['filters-container']}>
-        <div className={styles['search-container']}>
+      <div className={safeStyles['filters-container']}>
+        <div className={safeStyles['search-container']}>
           <form onSubmit={handleSearch}>
             <input 
               type="text" 
               value={searchInputValue}
               onChange={(e) => setSearchInputValue(e.target.value)}
               placeholder="Search by SKU, Product ID, or ASIN"
-              className={styles['search-input']}
+              className={safeStyles['search-input']}
             />
-            <button type="submit" className={styles['search-button']}>Search</button>
+            <button type="submit" className={safeStyles['search-button']}>Search</button>
           </form>
         </div>
         
-        <div className={styles['filter-container']}>
+        <div className={safeStyles['filter-container']}>
           <label htmlFor="status">Status:</label>
           <select 
             id="status" 
             value={status} 
             onChange={handleStatusChange}
-            className={styles['filter-select']}
+            className={safeStyles['filter-select']}
           >
             <option value="">All Statuses</option>
             {statusOptions.map(option => (
@@ -271,13 +314,13 @@ export default function AllListingsReportPage() {
           </select>
         </div>
         
-        <div className={styles['filter-container']}>
+        <div className={safeStyles['filter-container']}>
           <label htmlFor="fulfillmentChannel">Fulfillment Channel:</label>
           <select 
             id="fulfillmentChannel" 
             value={fulfillmentChannel} 
             onChange={handleFulfillmentChannelChange}
-            className={styles['filter-select']}
+            className={safeStyles['filter-select']}
           >
             <option value="">All Channels</option>
             {fulfillmentChannelOptions.map(channel => (
@@ -288,30 +331,30 @@ export default function AllListingsReportPage() {
       </div>
       
       {isLoading ? (
-        <div className={styles.loading}>Loading listings...</div>
+        <div className={safeStyles.loading}>Loading listings...</div>
       ) : (
-        <div className={styles['listings-table-container']}>
+        <div className={safeStyles['listings-table-container']}>
           {listings.length > 0 ? (
             <>
-              <div className={styles['column-selector-controls']}>
+              <div className={safeStyles['column-selector-controls']}>
                 <button 
                   onClick={() => setShowColumnSelector(!showColumnSelector)}
-                  className={styles['column-selector-button']}
+                  className={safeStyles['column-selector-button']}
                 >
                   {showColumnSelector ? 'Hide Column Selector' : 'Show Column Selector'}
                 </button>
                 
                 {showColumnSelector && (
-                  <div className={styles['column-selector']}>
-                    <div className={styles['column-selector-header']}>
+                  <div className={safeStyles['column-selector']}>
+                    <div className={safeStyles['column-selector-header']}>
                       <h3>Select Columns to Display</h3>
                       <button onClick={toggleAllColumns}>
                         {visibleColumns.length === allColumns.length ? 'Show Default' : 'Show All'}
                       </button>
                     </div>
-                    <div className={styles['column-selector-options']}>
+                    <div className={safeStyles['column-selector-options']}>
                       {allColumns.map(column => (
-                        <label key={column.key} className={styles['column-option']}>
+                        <label key={column.key} className={safeStyles['column-option']}>
                           <input
                             type="checkbox"
                             checked={visibleColumns.includes(column.key)}
@@ -325,12 +368,12 @@ export default function AllListingsReportPage() {
                 )}
               </div>
               
-              <div className={styles['results-count']}>
+              <div className={safeStyles['results-count']}>
                 {displayingText}
               </div>
               
-              <div className={styles['listings-table-wrapper']}>
-                <table className={styles['listings-table']}>
+              <div className={safeStyles['listings-table-wrapper']}>
+                <table className={safeStyles['listings-table']}>
                   <thead>
                     <tr>
                       {allColumns
@@ -348,7 +391,7 @@ export default function AllListingsReportPage() {
                           .map(column => (
                             <td key={`${listing.id}-${column.key}`}>
                               {column.key === 'status' ? (
-                                <span className={`${styles['status-badge']} ${styles[`status-${listing.status?.toLowerCase()}`]}`}>
+                                <span className={`${safeStyles['status-badge']} ${safeStyles[`status-${listing.status?.toLowerCase()}`]}`}>
                                   {listing.status || 'Unknown'}
                                 </span>
                               ) : (
@@ -364,11 +407,11 @@ export default function AllListingsReportPage() {
               
               {/* Pagination controls */}
               {pagination.totalPages > 1 && (
-                <div className={styles['pagination']}>
+                <div className={safeStyles['pagination']}>
                   <button 
                     onClick={() => handleChangePage(1)} 
                     disabled={pagination.currentPage === 1}
-                    className={styles['pagination-button']}
+                    className={safeStyles['pagination-button']}
                   >
                     First
                   </button>
@@ -376,7 +419,7 @@ export default function AllListingsReportPage() {
                   <button 
                     onClick={() => handleChangePage(pagination.currentPage - 1)} 
                     disabled={pagination.currentPage === 1}
-                    className={styles['pagination-button']}
+                    className={safeStyles['pagination-button']}
                   >
                     Previous
                   </button>
@@ -385,7 +428,7 @@ export default function AllListingsReportPage() {
                     <button 
                       key={pageNum} 
                       onClick={() => handleChangePage(pageNum)}
-                      className={`${styles['pagination-button']} ${pageNum === pagination.currentPage ? styles['pagination-active'] : ''}`}
+                      className={`${safeStyles['pagination-button']} ${pageNum === pagination.currentPage ? safeStyles['pagination-active'] : ''}`}
                     >
                       {pageNum}
                     </button>
@@ -394,7 +437,7 @@ export default function AllListingsReportPage() {
                   <button 
                     onClick={() => handleChangePage(pagination.currentPage + 1)} 
                     disabled={pagination.currentPage === pagination.totalPages}
-                    className={styles['pagination-button']}
+                    className={safeStyles['pagination-button']}
                   >
                     Next
                   </button>
@@ -402,7 +445,7 @@ export default function AllListingsReportPage() {
                   <button 
                     onClick={() => handleChangePage(pagination.totalPages)} 
                     disabled={pagination.currentPage === pagination.totalPages}
-                    className={styles['pagination-button']}
+                    className={safeStyles['pagination-button']}
                   >
                     Last
                   </button>
@@ -410,7 +453,7 @@ export default function AllListingsReportPage() {
               )}
             </>
           ) : (
-            <div className={styles['no-listings']}>
+            <div className={safeStyles['no-listings']}>
               <p>No listings found. Upload your Amazon All Listings Report to get started.</p>
             </div>
           )}

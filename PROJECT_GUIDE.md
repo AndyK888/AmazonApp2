@@ -239,4 +239,34 @@ try {
     // Handle network error
   }
 }
-``` 
+```
+
+### 4. CSS Best Practices
+
+1. When using CSS modules in Next.js:
+   - Always implement the `safeStyles` pattern to prevent crashes during server-side rendering:
+   ```jsx
+   import styles from './Component.module.css';
+   
+   const safeStyles = {
+     'container': styles?.container || '',
+     'button': styles?.button || ''
+   };
+   
+   // Use in components
+   return <div className={safeStyles.container}>...</div>;
+   ```
+   
+2. For third-party libraries with global CSS:
+   - Import in global styles file (`globals.css`) or custom `_app.js`
+   - Use the webpack configuration in `next.config.js` to handle CSS modules properly
+
+3. Ensure webpack is properly configured to handle CSS modules only for local files:
+   ```js
+   // in next.config.js
+   webpack: (config) => {
+     // Configure modules.auto to exclude node_modules
+     // ...configuration code...
+     return config;
+   }
+   ``` 

@@ -108,6 +108,16 @@ Common issues:
 
 For more details, see the individual README files in each service directory.
 
+## Recent Updates
+
+### CSS Module Import Improvements
+- Added robust CSS module handling with fallback mechanism to prevent rendering failures
+- Updated webpack configuration in Next.js to properly handle CSS modules from different sources
+- Implemented `safeStyles` pattern across components for better error resilience
+- Fixed CSS parsing issues with third-party libraries like Handsontable
+
+Please see [TROUBLESHOOTING.md](amazon-app/TROUBLESHOOTING.md) for more details about how CSS issues are handled.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 

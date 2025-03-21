@@ -26,6 +26,24 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   const [processStage, setProcessStage] = useState<ProcessStage>('idle');
   const [statusMessages, setStatusMessages] = useState<string[]>([]);
   const [fileId, setFileId] = useState<string | null>(null);
+  
+  // Create a safe styles object to handle undefined CSS modules
+  const safeStyles = {
+    'file-uploader': styles?.['file-uploader'] || 'file-uploader',
+    'file-uploader__input': styles?.['file-uploader__input'] || 'file-uploader__input',
+    'file-uploader__filename': styles?.['file-uploader__filename'] || 'file-uploader__filename',
+    'file-uploader__hint': styles?.['file-uploader__hint'] || 'file-uploader__hint',
+    'file-uploader__button': styles?.['file-uploader__button'] || 'file-uploader__button',
+    'file-uploader__progress-container': styles?.['file-uploader__progress-container'] || 'file-uploader__progress-container',
+    'file-uploader__progress': styles?.['file-uploader__progress'] || 'file-uploader__progress',
+    'file-uploader__progress-bar': styles?.['file-uploader__progress-bar'] || 'file-uploader__progress-bar',
+    'file-uploader__progress-text': styles?.['file-uploader__progress-text'] || 'file-uploader__progress-text',
+    'file-uploader__status-log': styles?.['file-uploader__status-log'] || 'file-uploader__status-log',
+    'file-uploader__status-message': styles?.['file-uploader__status-message'] || 'file-uploader__status-message',
+    'file-uploader__status': styles?.['file-uploader__status'] || 'file-uploader__status',
+    'error': styles?.['error'] || 'error',
+    'success': styles?.['success'] || 'success'
+  };
 
   const addStatusMessage = (message: string) => {
     setStatusMessages(prev => [...prev, message]);
@@ -140,28 +158,28 @@ const FileUploader: React.FC<FileUploaderProps> = ({
   };
   
   return (
-    <div className={styles['file-uploader']}>
+    <div className={safeStyles['file-uploader']}>
       <h3>Upload All Listings Report</h3>
       <p>Upload your Amazon All Listings Report to update your inventory database.</p>
       
-      <div className={styles['file-uploader__input']}>
+      <div className={safeStyles['file-uploader__input']}>
         <input 
           type="file" 
           accept=".txt,.csv" 
           onChange={handleFileChange} 
           disabled={isUploading || processStage === 'processing'} 
         />
-        <p className={styles['file-uploader__filename']}>
+        <p className={safeStyles['file-uploader__filename']}>
           {file ? file.name : 'No file selected'}
         </p>
       </div>
       
-      <p className={styles['file-uploader__hint']}>
+      <p className={safeStyles['file-uploader__hint']}>
         Supported format: Tab-delimited All_Listings_Report.txt from Amazon Seller Central
       </p>
       
       <button 
-        className={styles['file-uploader__button']} 
+        className={safeStyles['file-uploader__button']} 
         onClick={handleUpload} 
         disabled={!file || isUploading || processStage === 'processing' || processStage === 'uploaded'}
       >
@@ -169,25 +187,25 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       </button>
       
       {processStage !== 'idle' && processStage !== 'error' && (
-        <div className={styles['file-uploader__progress-container']}>
+        <div className={safeStyles['file-uploader__progress-container']}>
           {/* Only show upload progress for the actual upload phase */}
           {processStage === 'uploading' && (
             <>
-              <div className={styles['file-uploader__progress']}>
+              <div className={safeStyles['file-uploader__progress']}>
                 <div 
-                  className={styles['file-uploader__progress-bar']}
+                  className={safeStyles['file-uploader__progress-bar']}
                   style={{ width: `${getProgressPercentage()}%` }}
                 ></div>
               </div>
-              <div className={styles['file-uploader__progress-text']}>
+              <div className={safeStyles['file-uploader__progress-text']}>
                 Uploading file: {getProgressPercentage()}%
               </div>
             </>
           )}
           
-          <div className={styles['file-uploader__status-log']}>
+          <div className={safeStyles['file-uploader__status-log']}>
             {statusMessages.map((message, index) => (
-              <div key={index} className={styles['file-uploader__status-message']}>
+              <div key={index} className={safeStyles['file-uploader__status-message']}>
                 {message}
               </div>
             ))}
@@ -196,7 +214,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
       )}
       
       {uploadStatus && (
-        <p className={`${styles['file-uploader__status']} ${uploadStatus.startsWith('Error') ? styles.error : styles.success}`}>
+        <p className={`${safeStyles['file-uploader__status']} ${uploadStatus.startsWith('Error') ? safeStyles.error : safeStyles.success}`}>
           {uploadStatus}
         </p>
       )}

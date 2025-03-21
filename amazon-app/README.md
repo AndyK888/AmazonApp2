@@ -425,3 +425,69 @@ docker-compose -f docker-compose.yml -f docker-compose.flyway.yml up flyway
 3. Commit the migration file to version control
 
 For more information, see the [migrations README](/db/migrations/README.md).
+
+## CSS Module Management 
+
+The application implements a robust CSS module handling strategy to prevent rendering failures in both development and production environments.
+
+### SafeStyles Pattern
+
+To prevent crashes due to missing CSS modules during server-side rendering, the application uses a `safeStyles` pattern:
+
+```jsx
+// Import CSS module
+import styles from './Component.module.css';
+
+// Create a safe wrapper with fallbacks
+const safeStyles = {
+  'container': styles?.container || '',
+  'header': styles?.header || '',
+  // Add all CSS classes used in the component
+};
+
+// Use safe wrapper in components
+return <div className={safeStyles.container}>...</div>;
+```
+
+This pattern ensures components won't crash even if CSS modules aren't loaded yet, which can happen during:
+- Server-side rendering
+- Production builds
+- Hot module reloading
+
+### Webpack Configuration
+
+The application uses a custom webpack configuration in `next.config.js` to properly handle CSS modules:
+
+```js
+webpack: (config) => {
+  // Configure CSS modules to only apply to local CSS files, not node_modules
+  const rules = config.module.rules
+    .find((rule) => typeof rule.oneOf === 'object')
+    .oneOf.filter((rule) => Array.isArray(rule.use));
+
+  rules.forEach((rule) => {
+    rule.use.forEach((moduleLoader) => {
+      if (
+        moduleLoader.loader?.includes('css-loader') &&
+        !moduleLoader.loader?.includes('postcss-loader')
+      ) {
+        if (moduleLoader.options.modules) {
+          moduleLoader.options.modules.auto = (resourcePath) => !resourcePath.includes('node_modules');
+        }
+      }
+    });
+  });
+
+  return config;
+}
+```
+
+This ensures CSS modules are only applied to local CSS files and not to CSS imported from node_modules, preventing conflicts with third-party libraries.
+
+### Global CSS
+
+For third-party libraries with CSS that needs to be imported globally:
+- Import the CSS in the global styles file (`/styles/globals.css`)
+- Or import in a custom `_app.js` file
+
+For more information about CSS issue troubleshooting, see [TROUBLESHOOTING.md](../TROUBLESHOOTING.md).

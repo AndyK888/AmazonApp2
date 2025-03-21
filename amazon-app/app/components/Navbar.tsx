@@ -9,36 +9,49 @@ const Navbar: React.FC = () => {
     setIsOpen(!isOpen);
   };
 
+  // Ensure styles object exists with fallbacks
+  const safeStyles = {
+    navbar: styles?.navbar || 'navbar',
+    'navbar-logo': styles?.['navbar-logo'] || 'navbar-logo',
+    'navbar-toggle': styles?.['navbar-toggle'] || 'navbar-toggle',
+    'burger-icon': styles?.['burger-icon'] || 'burger-icon',
+    open: styles?.open || 'open',
+    'nav-list': styles?.['nav-list'] || 'nav-list',
+    'nav-list-open': styles?.['nav-list-open'] || 'nav-list-open',
+    'nav-item': styles?.['nav-item'] || 'nav-item',
+    'nav-link': styles?.['nav-link'] || 'nav-link',
+  };
+
   return (
-    <nav className={styles.navbar}>
-      <div className={styles['navbar-logo']}>
+    <nav className={safeStyles.navbar}>
+      <div className={safeStyles['navbar-logo']}>
         <Link href="/">
           <span>Amazon Inventory</span>
         </Link>
       </div>
       
-      <button className={styles['navbar-toggle']} onClick={toggleMenu}>
-        <span className={`${styles['burger-icon']} ${isOpen ? styles.open : ''}`}></span>
+      <button className={safeStyles['navbar-toggle']} onClick={toggleMenu}>
+        <span className={`${safeStyles['burger-icon']} ${isOpen ? safeStyles.open : ''}`}></span>
       </button>
       
-      <ul className={`${styles['nav-list']} ${isOpen ? styles['nav-list-open'] : ''}`}>
-        <li className={styles['nav-item']}>
-          <Link href="/" className={styles['nav-link']}>Dashboard</Link>
+      <ul className={`${safeStyles['nav-list']} ${isOpen ? safeStyles['nav-list-open'] : ''}`}>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/" className={safeStyles['nav-link']}>Dashboard</Link>
         </li>
-        <li className={styles['nav-item']}>
-          <Link href="/inventory" className={styles['nav-link']}>Inventory</Link>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/inventory" className={safeStyles['nav-link']}>Inventory</Link>
         </li>
-        <li className={styles['nav-item']}>
-          <Link href="/all-listings-report" className={styles['nav-link']}>All Listings Report</Link>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/all-listings-report" className={safeStyles['nav-link']}>All Listings Report</Link>
         </li>
-        <li className={styles['nav-item']}>
-          <Link href="/amazon-fulfilled-inventory" className={styles['nav-link']}>Amazon Fulfilled Inventory</Link>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/amazon-fulfilled-inventory" className={safeStyles['nav-link']}>Amazon Fulfilled Inventory</Link>
         </li>
-        <li className={styles['nav-item']}>
-          <Link href="/identifier-changes" className={styles['nav-link']}>Identifier Changes</Link>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/identifier-changes" className={safeStyles['nav-link']}>Identifier Changes</Link>
         </li>
-        <li className={styles['nav-item']}>
-          <Link href="/settings" className={styles['nav-link']}>Settings</Link>
+        <li className={safeStyles['nav-item']}>
+          <Link href="/settings" className={safeStyles['nav-link']}>Settings</Link>
         </li>
       </ul>
     </nav>

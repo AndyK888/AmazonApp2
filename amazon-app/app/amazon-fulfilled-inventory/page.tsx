@@ -33,6 +33,36 @@ export default function AmazonFulfilledInventoryPage() {
   // Get filter options
   const [conditionOptions, setConditionOptions] = useState<string[]>([]);
 
+  // Add safe styles handling
+  const safeStyles = {
+    'amazon-fulfilled-inventory-container': styles?.['amazon-fulfilled-inventory-container'] || 'amazon-fulfilled-inventory-container',
+    'error-message': styles?.['error-message'] || 'error-message',
+    'stats-container': styles?.['stats-container'] || 'stats-container',
+    'stat-card': styles?.['stat-card'] || 'stat-card',
+    'filters-container': styles?.['filters-container'] || 'filters-container',
+    'search-container': styles?.['search-container'] || 'search-container',
+    'search-input': styles?.['search-input'] || 'search-input',
+    'search-button': styles?.['search-button'] || 'search-button',
+    'filter-container': styles?.['filter-container'] || 'filter-container',
+    'filter-select': styles?.['filter-select'] || 'filter-select',
+    'loading': styles?.['loading'] || 'loading',
+    'inventory-table-container': styles?.['inventory-table-container'] || 'inventory-table-container',
+    'column-selector-controls': styles?.['column-selector-controls'] || 'column-selector-controls',
+    'column-selector-button': styles?.['column-selector-button'] || 'column-selector-button',
+    'column-selector': styles?.['column-selector'] || 'column-selector',
+    'column-selector-header': styles?.['column-selector-header'] || 'column-selector-header',
+    'column-selector-options': styles?.['column-selector-options'] || 'column-selector-options',
+    'column-option': styles?.['column-option'] || 'column-option',
+    'results-count': styles?.['results-count'] || 'results-count',
+    'inventory-table-wrapper': styles?.['inventory-table-wrapper'] || 'inventory-table-wrapper',
+    'inventory-table': styles?.['inventory-table'] || 'inventory-table',
+    'condition-badge': styles?.['condition-badge'] || 'condition-badge',
+    'pagination': styles?.['pagination'] || 'pagination',
+    'pagination-button': styles?.['pagination-button'] || 'pagination-button',
+    'pagination-active': styles?.['pagination-active'] || 'pagination-active',
+    'no-inventory': styles?.['no-inventory'] || 'no-inventory',
+  };
+
   useEffect(() => {
     // Fetch condition options for dropdown
     const fetchConditionOptions = async () => {
@@ -186,7 +216,7 @@ export default function AmazonFulfilledInventoryPage() {
     : 'No inventory items found';
 
   return (
-    <div className={styles['amazon-fulfilled-inventory-container']}>
+    <div className={safeStyles['amazon-fulfilled-inventory-container']}>
       <h1>Amazon Fulfilled Inventory</h1>
       
       <FileUploader 
@@ -197,7 +227,7 @@ export default function AmazonFulfilledInventoryPage() {
       />
       
       {error && (
-        <div className={styles['error-message']}>
+        <div className={safeStyles['error-message']}>
           <p>{error}</p>
           <button onClick={() => setError(null)}>Dismiss</button>
         </div>
@@ -205,24 +235,24 @@ export default function AmazonFulfilledInventoryPage() {
       
       {/* Statistics */}
       {stats && (
-        <div className={styles['stats-container']}>
-          <div className={styles['stat-card']}>
+        <div className={safeStyles['stats-container']}>
+          <div className={safeStyles['stat-card']}>
             <h3>Total SKUs</h3>
             <p>{stats.total_skus}</p>
           </div>
-          <div className={styles['stat-card']}>
+          <div className={safeStyles['stat-card']}>
             <h3>Fulfillable Quantity</h3>
             <p>{stats.total_fulfillable}</p>
           </div>
-          <div className={styles['stat-card']}>
+          <div className={safeStyles['stat-card']}>
             <h3>Unfulfillable</h3>
             <p>{stats.total_unfulfillable}</p>
           </div>
-          <div className={styles['stat-card']}>
+          <div className={safeStyles['stat-card']}>
             <h3>Reserved</h3>
             <p>{stats.total_reserved}</p>
           </div>
-          <div className={styles['stat-card']}>
+          <div className={safeStyles['stat-card']}>
             <h3>Inbound (Total)</h3>
             <p>{stats.total_inbound_working + stats.total_inbound_shipped + stats.total_inbound_receiving}</p>
           </div>
@@ -230,8 +260,8 @@ export default function AmazonFulfilledInventoryPage() {
       )}
       
       {/* Filters and Search */}
-      <div className={styles['filters-container']}>
-        <div className={styles['search-container']}>
+      <div className={safeStyles['filters-container']}>
+        <div className={safeStyles['search-container']}>
           <form onSubmit={handleSearch}>
             <input 
               type="text" 
@@ -244,7 +274,7 @@ export default function AmazonFulfilledInventoryPage() {
         </div>
         
         <select 
-          className={styles['filter-select']}
+          className={safeStyles['filter-select']}
           value={condition}
           onChange={handleConditionChange}
         >
@@ -254,16 +284,16 @@ export default function AmazonFulfilledInventoryPage() {
           ))}
         </select>
         
-        <div className={styles['column-selector']}>
+        <div className={safeStyles['column-selector']}>
           <button 
-            className={styles['column-button']}
+            className={safeStyles['column-selector-button']}
             onClick={() => setShowColumnSelector(!showColumnSelector)}
           >
             Columns {showColumnSelector ? '▲' : '▼'}
           </button>
           
           {showColumnSelector && (
-            <div className={styles['column-list']}>
+            <div className={safeStyles['column-selector-options']}>
               {allColumns.map((column) => (
                 <label key={column.key}>
                   <input 
@@ -274,7 +304,7 @@ export default function AmazonFulfilledInventoryPage() {
                   {column.label}
                 </label>
               ))}
-              <div className={styles['column-actions']}>
+              <div className={safeStyles['column-selector-controls']}>
                 <button onClick={toggleAllColumns}>
                   {visibleColumns.length === allColumns.length ? 'Reset to Default' : 'Select All'}
                 </button>
@@ -285,13 +315,13 @@ export default function AmazonFulfilledInventoryPage() {
       </div>
       
       {/* Inventory Table */}
-      <div className={styles['table-container']}>
+      <div className={safeStyles['inventory-table-container']}>
         {isLoading ? (
-          <div className={styles['loading-spinner']}>
+          <div className={safeStyles['loading']}>
             <p>Loading inventory data...</p>
           </div>
         ) : inventory.length > 0 ? (
-          <table className={styles['inventory-table']}>
+          <table className={safeStyles['inventory-table']}>
             <thead>
               <tr>
                 {allColumns
@@ -316,7 +346,7 @@ export default function AmazonFulfilledInventoryPage() {
             </tbody>
           </table>
         ) : (
-          <div className={styles['loading-spinner']}>
+          <div className={safeStyles['no-inventory']}>
             <p>No inventory data found.</p>
           </div>
         )}
@@ -324,12 +354,12 @@ export default function AmazonFulfilledInventoryPage() {
       
       {/* Pagination */}
       {inventory.length > 0 && (
-        <div className={styles['pagination']}>
-          <div className={styles['page-info']}>
+        <div className={safeStyles['pagination']}>
+          <div className={safeStyles['results-count']}>
             {displayingText}
           </div>
           
-          <div className={styles['page-controls']}>
+          <div className={safeStyles['pagination-button']}>
             <button 
               onClick={() => handleChangePage(1)}
               disabled={pagination.currentPage === 1}
@@ -348,7 +378,7 @@ export default function AmazonFulfilledInventoryPage() {
               <button 
                 key={pageNumber}
                 onClick={() => handleChangePage(pageNumber)}
-                className={pagination.currentPage === pageNumber ? styles['active'] : ''}
+                className={pagination.currentPage === pageNumber ? safeStyles['pagination-active'] : ''}
               >
                 {pageNumber}
               </button>

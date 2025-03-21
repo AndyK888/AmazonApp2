@@ -27,6 +27,29 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
   const [status, setStatus] = useState<FileStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  
+  // Create safe styles object for handling undefined CSS modules
+  const safeStyles = {
+    container: styles?.container || 'container',
+    spinner: styles?.spinner || 'spinner',
+    error: styles?.error || 'error',
+    statusCompleted: styles?.statusCompleted || 'statusCompleted',
+    statusProcessing: styles?.statusProcessing || 'statusProcessing',
+    statusError: styles?.statusError || 'statusError',
+    statusPending: styles?.statusPending || 'statusPending',
+    fileInfo: styles?.fileInfo || 'fileInfo',
+    statusRow: styles?.statusRow || 'statusRow',
+    label: styles?.label || 'label',
+    status: styles?.status || 'status',
+    progressInfo: styles?.progressInfo || 'progressInfo',
+    progressBar: styles?.progressBar || 'progressBar',
+    progressFill: styles?.progressFill || 'progressFill',
+    completionInfo: styles?.completionInfo || 'completionInfo',
+    infoRow: styles?.infoRow || 'infoRow',
+    errorContainer: styles?.errorContainer || 'errorContainer',
+    errorTitle: styles?.errorTitle || 'errorTitle',
+    errorMessage: styles?.errorMessage || 'errorMessage'
+  };
 
   useEffect(() => {
     if (!fileId) return;
@@ -93,18 +116,18 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
 
   if (loading && !status) {
     return (
-      <div className={styles.container}>
+      <div className={safeStyles.container}>
         <h3>Checking status...</h3>
-        <div className={styles.spinner}></div>
+        <div className={safeStyles.spinner}></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={styles.container}>
+      <div className={safeStyles.container}>
         <h3>Error</h3>
-        <div className={styles.error}>{error}</div>
+        <div className={safeStyles.error}>{error}</div>
       </div>
     );
   }
@@ -116,13 +139,13 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
   const getStatusColor = () => {
     switch (status.status) {
       case 'completed':
-        return styles.statusCompleted;
+        return safeStyles.statusCompleted;
       case 'processing':
-        return styles.statusProcessing;
+        return safeStyles.statusProcessing;
       case 'error':
-        return styles.statusError;
+        return safeStyles.statusError;
       default:
-        return styles.statusPending;
+        return safeStyles.statusPending;
     }
   };
 
@@ -140,43 +163,43 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
   };
 
   return (
-    <div className={styles.container}>
+    <div className={safeStyles.container}>
       <h3>File Processing Status</h3>
       
-      <div className={styles.fileInfo}>
+      <div className={safeStyles.fileInfo}>
         <strong>File:</strong> {status.fileName}
       </div>
       
-      <div className={styles.statusRow}>
-        <span className={styles.label}>Status:</span>
-        <span className={`${styles.status} ${getStatusColor()}`}>
+      <div className={safeStyles.statusRow}>
+        <span className={safeStyles.label}>Status:</span>
+        <span className={`${safeStyles.status} ${getStatusColor()}`}>
           {status.status.charAt(0).toUpperCase() + status.status.slice(1)}
         </span>
       </div>
       
       {(status.status === 'processing' || status.status === 'completed') && (
         <>
-          <div className={styles.progressInfo}>
+          <div className={safeStyles.progressInfo}>
             <span>{status.processedRows} of {status.totalRows} rows processed</span>
             <span>{status.progress}%</span>
           </div>
           
-          <div className={styles.progressBar}>
+          <div className={safeStyles.progressBar}>
             <div 
-              className={styles.progressFill} 
+              className={safeStyles.progressFill} 
               style={{ width: `${status.progress}%` }}
             ></div>
           </div>
           
           {status.status === 'completed' && (
-            <div className={styles.completionInfo}>
-              <div className={styles.infoRow}>
+            <div className={safeStyles.completionInfo}>
+              <div className={safeStyles.infoRow}>
                 <strong>Listings Imported:</strong> {status.listingsCount}
               </div>
-              <div className={styles.infoRow}>
+              <div className={safeStyles.infoRow}>
                 <strong>Completed At:</strong> {formatDate(status.completedAt)}
               </div>
-              <div className={styles.infoRow}>
+              <div className={safeStyles.infoRow}>
                 <strong>Duration:</strong> {
                   status.completedAt 
                     ? Math.round((new Date(status.completedAt).getTime() - new Date(status.createdAt).getTime()) / 1000)
@@ -189,9 +212,9 @@ export default function ProcessingStatus({ fileId, onComplete, statusEndpoint }:
       )}
       
       {status.status === 'error' && (
-        <div className={styles.errorContainer}>
-          <div className={styles.errorTitle}>Error Details:</div>
-          <div className={styles.errorMessage}>{status.errorMessage || 'Unknown error'}</div>
+        <div className={safeStyles.errorContainer}>
+          <div className={safeStyles.errorTitle}>Error Details:</div>
+          <div className={safeStyles.errorMessage}>{status.errorMessage || 'Unknown error'}</div>
         </div>
       )}
     </div>

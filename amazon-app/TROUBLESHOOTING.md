@@ -377,4 +377,89 @@ docker compose exec db psql -U postgres -d amazon_inventory
 
 ```bash
 docker compose exec redis redis-cli
-``` 
+```
+
+## Styling and CSS Issues
+
+### Error: Cannot read properties of undefined (reading 'container')
+
+**Problem**: CSS modules fail to load properly in production builds, causing errors like:
+```
+TypeError: Cannot read properties of undefined (reading '[class-name]')
+```
+
+**Cause**: In production builds or server-side rendering contexts, CSS modules might not be available during initial component rendering, especially with external CSS imports (like Handsontable).
+
+**Solutions**:
+
+1. **Use fallback styles object**:
+   The application now implements a `safeStyles` pattern to gracefully handle CSS module import failures:
+   
+   ```jsx
+   import styles from './Component.module.css';
+   
+   // Create fallback styles object with the same keys
+   const safeStyles = {
+     'container': styles?.container || '',
+     'header': styles?.header || '',
+     // Add all CSS classes used in the component
+   };
+   
+   // Use safeStyles in className props
+   return <div className={safeStyles.container}>...</div>;
+   ```
+   
+   This pattern ensures components won't crash if CSS modules aren't loaded yet.
+
+2. **Webpack configuration for external CSS**:
+   The `next.config.js` includes a webpack configuration to properly handle CSS modules from both local and node_modules sources:
+   
+   ```js
+   webpack: (config) => {
+     // Configure CSS modules to only apply to local CSS files, not node_modules
+     const rules = config.module.rules
+       .find((rule) => typeof rule.oneOf === 'object')
+       .oneOf.filter((rule) => Array.isArray(rule.use));
+   
+     rules.forEach((rule) => {
+       rule.use.forEach((moduleLoader) => {
+         if (
+           moduleLoader.loader?.includes('css-loader') &&
+           !moduleLoader.loader?.includes('postcss-loader')
+         ) {
+           if (moduleLoader.options.modules) {
+             moduleLoader.options.modules.auto = (resourcePath) => !resourcePath.includes('node_modules');
+           }
+         }
+       });
+     });
+   
+     return config;
+   }
+   ```
+
+3. For third-party libraries with CSS that needs to be globally imported (like Handsontable):
+   - Import the CSS in a global styles file (e.g., `globals.css`)
+   - Or use a custom `_app.js` to import global CSS files
+
+### CSS Not Applying in Production Build
+
+**Problem**: Styles are visible in development but not in production builds.
+
+**Cause**: Next.js handles CSS differently in production, and some styles might not be properly extracted.
+
+**Solutions**:
+
+1. Ensure all CSS imports are correctly structured:
+   - Global CSS should be imported in `_app.js` or via `globals.css`
+   - Component CSS should use CSS Modules (`.module.css` extension)
+
+2. If using CSS-in-JS solutions, ensure they're compatible with Next.js SSR
+
+3. Run a production build locally to test:
+   ```bash
+   npm run build
+   npm run start
+   ```
+
+4. Check the browser console for CSS-related warnings or errors 
