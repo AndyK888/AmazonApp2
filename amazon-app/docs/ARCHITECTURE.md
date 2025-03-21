@@ -98,6 +98,8 @@ git checkout main           # Return to stable branch
 | ./workers/report-processor/Dockerfile | Worker container config | `git checkout -- ./workers/report-processor/Dockerfile` |
 | ./db/init/00-wait-for-tables.sh | Database initialization | `git checkout -- ./db/init/00-wait-for-tables.sh` |
 | ./db/init/verify-tables-healthcheck.sh | Database health check | `git checkout -- ./db/init/verify-tables-healthcheck.sh` |
+| next.config.js | Frontend webpack configuration | `git checkout -- next.config.js` |
+| ./styles/globals.css | Global CSS styles | `git checkout -- ./styles/globals.css` |
 
 ## 7. Testing Protocol
 
@@ -121,6 +123,12 @@ Before each deployment or significant change, verify:
 4. Frontend accessibility
    ```bash
    curl -I http://localhost:3000
+   ```
+
+5. CSS styling validation
+   ```bash
+   # Run Puppeteer test to verify styling
+   node puppeteer-test.js
    ```
 
 ## 8. External Requirements
@@ -165,3 +173,52 @@ The application follows a microservices architecture with these key components:
 | Worker | Processing delays | Retry mechanism, error logging |
 | Frontend | UI unavailable | Static fallback pages, error boundaries |
 | Redis | Message loss | Persistence configuration, monitoring |
+| CSS Modules | UI rendering issues | SafeStyles pattern, webpack configuration |
+
+## 10. CSS Architecture
+
+### 10.1 Styling Approach
+
+The application uses CSS Modules for component styling with several key architectural features:
+
+1. **SafeStyles Pattern**: A fallback mechanism for CSS module handling:
+   ```jsx
+   // Import CSS module
+   import styles from './Component.module.css';
+   
+   // Create safe wrapper with fallbacks
+   const safeStyles = {
+     'container': styles?.container || '',
+     'button': styles?.button || ''
+   };
+   
+   // Use in components
+   return <div className={safeStyles.container}>...</div>;
+   ```
+
+2. **Webpack Configuration**: Custom configuration in next.config.js ensures CSS modules are processed correctly:
+   ```javascript
+   webpack: (config) => {
+     // Configure CSS modules to only apply to local CSS files, not node_modules
+     const rules = config.module.rules
+       .find((rule) => typeof rule.oneOf === 'object')
+       .oneOf.filter((rule) => Array.isArray(rule.use));
+   
+     rules.forEach((rule) => {
+       rule.use.forEach((moduleLoader) => {
+         if (
+           moduleLoader.loader?.includes('css-loader') &&
+           !moduleLoader.loader?.includes('postcss-loader')
+         ) {
+           if (moduleLoader.options.modules) {
+             moduleLoader.options.modules.auto = (resourcePath) => !resourcePath.includes('node_modules');
+           }
+         }
+       });
+     });
+   
+     return config;
+   }
+   ```
+
+3. **Global CSS**: For third-party libraries, global CSS imports are handled in the global styles file
