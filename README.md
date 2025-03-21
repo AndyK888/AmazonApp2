@@ -108,6 +108,15 @@ Common issues:
 
 For more details, see the individual README files in each service directory.
 
+## Documentation
+
+The project includes comprehensive documentation:
+
+- [TROUBLESHOOTING.md](amazon-app/TROUBLESHOOTING.md) - Solutions for common issues
+- [DOCKER.md](amazon-app/DOCKER.md) - Docker setup and management
+- [CSS Best Practices](amazon-app/docs/CSS_BEST_PRACTICES.md) - CSS module architecture and styling guidelines
+- [Architecture Documentation](amazon-app/docs/ARCHITECTURE.md) - System architecture and component dependencies
+
 ## Recent Updates
 
 ### CSS Module Import Improvements
@@ -115,9 +124,10 @@ For more details, see the individual README files in each service directory.
 - Updated webpack configuration in Next.js to properly handle CSS modules from different sources
 - Implemented `safeStyles` pattern across components for better error resilience
 - Fixed CSS parsing issues with third-party libraries like Handsontable
+- Added comprehensive CSS documentation in [CSS_BEST_PRACTICES.md](amazon-app/docs/CSS_BEST_PRACTICES.md)
 
 Please see [TROUBLESHOOTING.md](amazon-app/TROUBLESHOOTING.md) for more details about how CSS issues are handled.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
